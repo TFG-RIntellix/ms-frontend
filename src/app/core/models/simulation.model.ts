@@ -4,6 +4,8 @@ export interface SimulationSummary {
   partyName: string;
   requestId: string;
   simulationDate: string;
+  isArchived: boolean;
+  simulatedRiskGrade?: string;
 }
 
 export interface SimulationMetrics {
