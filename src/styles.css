@@ -1,1 +1,34 @@
-/* You can add global styles to this file, and also import other style files */
+@import 'tailwindcss';
+@import 'tailwindcss-primeui';
+
+@theme {
+  --color-rintellix-primary: #F30005;
+  --color-rintellix-primary-hover: #DC2626;
+  --color-rintellix-primary-foreground: #FFFFFF;
+  --color-rintellix-background: #F8FAFC;
+  --color-rintellix-card: #FFFFFF;
+  --color-rintellix-muted: #E2E8F0;
+  --color-rintellix-muted-foreground: #64748B;
+  --color-rintellix-success: #10B981;
+  --color-rintellix-warning: #F59E0B;
+  --color-rintellix-danger: #EF4444;
+  --color-rintellix-info: #3B82F6;
+  --color-rintellix-accent-blue: #2563EB;
+  --radius-rintellix: 0.625rem;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--color-rintellix-background);
+  color: #0F172A;
+  font-family: var(--p-font-family, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+}
+
+p-card .p-card-content {
+  padding: 1rem;
+}
