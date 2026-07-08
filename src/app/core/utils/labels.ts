@@ -85,3 +85,6 @@ export const riskGradeColor: Record<string, string> = {
   G: 'danger',
   H: 'danger'
 };
+
+export const employmentStatusOptions = Object.entries(employmentStatusLabel).map(([value, label]) => ({ value, label }));
+export const purposeOptions = Object.entries(purposeLabel).map(([value, label]) => ({ value, label }));
