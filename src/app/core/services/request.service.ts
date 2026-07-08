@@ -18,7 +18,7 @@ export class RequestService {
 
   list(filters: RequestListFilter = {}) {
     return this.http.get<RequestSummary[]>(`${this.apiUrl}/api/requests`, {
-      params: toHttpParams(filters)
+      params: toHttpParams(filters as Record<string, unknown>)
     });
   }
 

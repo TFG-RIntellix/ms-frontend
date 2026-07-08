@@ -25,7 +25,7 @@ export class SimulationService {
 
   list(filters: SimulationListFilter = {}) {
     return this.http.get<SimulationSummary[]>(`${this.apiUrl}/api/simulations`, {
-      params: toHttpParams(filters)
+      params: toHttpParams(filters as Record<string, unknown>)
     });
   }
 

@@ -16,7 +16,7 @@ export class ReportService {
 
   list(filters: ReportListFilter = {}) {
     return this.http.get<ReportSummary[]>(`${this.apiUrl}/api/reports`, {
-      params: toHttpParams(filters)
+      params: toHttpParams(filters as Record<string, unknown>)
     });
   }
 
