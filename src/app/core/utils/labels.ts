@@ -8,7 +8,7 @@ export const statusLabel: Record<string, string> = {
 };
 
 export const statusSeverity: Record<string, TagSeverity> = {
-  PENDIENTE_DE_REVISION: 'warning',
+  PENDIENTE_DE_REVISION: 'warn',
   REVISADO: 'info',
   APROBADO: 'success',
   RECHAZADO: 'danger'
@@ -80,8 +80,8 @@ export const riskGradeColor: Record<string, string> = {
   B: 'success',
   C: 'info',
   D: 'info',
-  E: 'warning',
-  F: 'warning',
+  E: 'warn',
+  F: 'warn',
   G: 'danger',
   H: 'danger'
 };

@@ -2,14 +2,14 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { combineLatest } from 'rxjs';
+import { BehaviorSubject, combineLatest } from 'rxjs';
 import { debounceTime, distinctUntilChanged, startWith, switchMap } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-import { ToggleButtonModule } from 'primeng/togglebutton';
+import { SelectButtonModule } from 'primeng/selectbutton';
 
 import { SimulationService, SimulationListFilter } from '../../core/services/simulation.service';
 import { SimulationSummary } from '../../core/models/simulation.model';
@@ -27,7 +27,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
     InputTextModule,
     TableModule,
     TagModule,
-    ToggleButtonModule,
+    SelectButtonModule,
     PageHeaderComponent,
     StatusBadgeComponent
   ],
@@ -51,11 +51,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
             />
           </span>
 
-          <p-toggleButton
+          <p-selectButton
+            [options]="statusOptions"
             [formControl]="archivedControl"
-            onLabel="Archivadas"
-            offLabel="Activas"
-            styleClass="w-full sm:w-40"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="w-full sm:w-auto"
           />
         </div>
 
@@ -96,13 +97,15 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
                     [label]="sim.isArchived ? 'Desarchivar' : 'Archivar'"
                     (onClick)="toggleArchive(sim)"
                   />
-                  <p-button
-                    severity="danger"
-                    [outlined]="true"
-                    icon="pi pi-trash"
-                    label="Eliminar"
-                    (onClick)="deleteSimulation(sim)"
-                  />
+                  @if (sim.isArchived) {
+                    <p-button
+                      severity="danger"
+                      [outlined]="true"
+                      icon="pi pi-trash"
+                      label="Eliminar"
+                      (onClick)="deleteSimulation(sim)"
+                    />
+                  }
                 </div>
               </td>
             </tr>
@@ -120,7 +123,14 @@ export class SimulationsComponent implements OnInit {
   isLoading = signal(false);
 
   searchControl = new FormControl('');
-  archivedControl = new FormControl<boolean>(false);
+  archivedControl = new FormControl<boolean | null>(false);
+  refreshTrigger$ = new BehaviorSubject<void>(undefined);
+
+  statusOptions = [
+    { label: 'Activas', value: false },
+    { label: 'Archivadas', value: true },
+    { label: 'Todas', value: null }
+  ];
 
   ngOnInit() {
     const requestId = this.route.snapshot.queryParamMap.get('requestId') || '';
@@ -129,14 +139,15 @@ export class SimulationsComponent implements OnInit {
     }
 
     combineLatest([
-      this.searchControl.valueChanges.pipe(startWith(''), debounceTime(300), distinctUntilChanged()),
-      this.archivedControl.valueChanges.pipe(startWith(false), distinctUntilChanged())
+      this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged()),
+      this.archivedControl.valueChanges.pipe(startWith(this.archivedControl.value), distinctUntilChanged()),
+      this.refreshTrigger$
     ])
       .pipe(
         switchMap(([search, archived]) => {
           this.isLoading.set(true);
           const filters: SimulationListFilter = {
-            archived: archived ? true : undefined
+            archived: archived !== null ? archived : undefined
           };
           if (search) {
             filters.partyName = search;
@@ -174,6 +185,6 @@ export class SimulationsComponent implements OnInit {
   }
 
   private reload() {
-    this.searchControl.setValue(this.searchControl.value ?? '', { emitEvent: true });
+    this.refreshTrigger$.next();
   }
 }

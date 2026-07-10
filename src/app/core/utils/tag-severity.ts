@@ -1,1 +1,1 @@
-export type TagSeverity = 'success' | 'info' | 'warning' | 'danger' | 'secondary' | 'contrast';
+export type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast';

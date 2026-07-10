@@ -1,8 +1,8 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { combineLatest, of } from 'rxjs';
+import { combineLatest } from 'rxjs';
 import { debounceTime, distinctUntilChanged, startWith, switchMap } from 'rxjs/operators';
 import { Table, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -21,6 +21,7 @@ import { statusLabel } from '../../../core/utils/labels';
 @Component({
   selector: 'app-request-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     RouterLink,
@@ -69,6 +70,7 @@ import { statusLabel } from '../../../core/utils/labels';
         <p-table
           #dt
           [value]="requests()"
+          dataKey="requestId"
           [paginator]="true"
           [rows]="10"
           [rowsPerPageOptions]="[10, 25, 50]"
@@ -139,6 +141,7 @@ export class RequestListComponent implements OnInit {
         next: list => {
           this.requests.set(list);
           this.isLoading.set(false);
+          console.log('Requests list:', list);
         },
         error: () => {
           this.requests.set([]);

@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import {
   FormBuilder,
   FormControl,
@@ -43,6 +44,7 @@ interface SimField {
   min?: number;
   max?: number;
   step?: number;
+  sourceKey?: string;
 }
 
 @Component({
@@ -66,7 +68,35 @@ interface SimField {
   template: `
     <app-page-header title="Simular escenario" [subtitle]="'Solicitud ' + requestId()" />
 
-    @if (request(); as req) {
+    @if (isLoading()) {
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <p-card styleClass="rounded-xl shadow-sm">
+          <ng-template pTemplate="title">
+            <div class="h-4 w-48 bg-surface-200 rounded animate-pulse"></div>
+          </ng-template>
+          <ng-template pTemplate="content">
+            <div class="space-y-4">
+              @for (i of [1,2,3,4,5]; track i) {
+                <div class="space-y-2">
+                  <div class="h-3 w-32 bg-surface-200 rounded animate-pulse"></div>
+                  <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
+                </div>
+              }
+              <div class="h-10 w-full bg-primary-200 rounded animate-pulse mt-4"></div>
+            </div>
+          </ng-template>
+        </p-card>
+        <p-card styleClass="rounded-xl shadow-sm">
+          <ng-template pTemplate="title">
+            <div class="h-4 w-56 bg-surface-200 rounded animate-pulse"></div>
+          </ng-template>
+          <ng-template pTemplate="content">
+            <p class="text-surface-400 text-center py-8">Modifica las variables y pulsa <strong>Recalcular</strong> para ver la comparativa.</p>
+          </ng-template>
+        </p-card>
+      </div>
+    } @else {
+      @let req = request()!;
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <p-card styleClass="rounded-xl shadow-sm">
           <ng-template pTemplate="title">
@@ -114,7 +144,7 @@ interface SimField {
                           [formControlName]="field.key"
                           class="w-5 h-5 rounded border-surface-300 accent-primary-500"
                         />
-                        <span class="text-sm text-surface-600">Sí / No</span>
+                        <span class="text-sm text-surface-600">Sí</span>
                       </label>
                     }
                     @case ('text') {
@@ -206,11 +236,8 @@ interface SimField {
           </ng-template>
         </p-card>
       </div>
-    } @else {
-      <p-card styleClass="rounded-xl shadow-sm p-6 text-center">
-        <p class="text-surface-500">Cargando solicitud...</p>
-      </p-card>
     }
+
   `
 })
 export class SimulateComponent implements OnInit {
@@ -227,6 +254,7 @@ export class SimulateComponent implements OnInit {
   scoring = signal<Scoring | undefined>(undefined);
   draft = signal<DraftResponse | undefined>(undefined);
   isSaving = signal(false);
+  isLoading = signal(true);
   errorMessage = signal<string | undefined>(undefined);
 
   form: FormGroup = this.fb.group({});
@@ -258,7 +286,7 @@ export class SimulateComponent implements OnInit {
   simRiskSeverity = computed<TagSeverity>(() => {
     const grade = this.draft()?.simulatedResults.riskGrade ?? '';
     if (['A', 'B', 'C'].includes(grade)) return 'success';
-    if (['D', 'E'].includes(grade)) return 'warning';
+    if (['D', 'E'].includes(grade)) return 'warn';
     return 'danger';
   });
 
@@ -279,48 +307,49 @@ export class SimulateComponent implements OnInit {
     }
     this.requestId.set(id);
 
-    this.requestService.get(id).subscribe({
-      next: req => this.request.set(req),
+    forkJoin({
+      request: this.requestService.get(id),
+      party: this.requestService.getParty(id),
+      scoring: this.scoringService.getByRequest(id)
+    }).subscribe({
+      next: ({ request, party, scoring }) => {
+        this.request.set(request);
+        this.party.set(party);
+        this.scoring.set(scoring);
+        this.isLoading.set(false);
+      },
       error: () => this.router.navigate(['/requests', id])
-    });
-
-    this.requestService.getParty(id).subscribe({
-      next: party => this.party.set(party)
-    });
-
-    this.scoringService.getByRequest(id).subscribe({
-      next: score => this.scoring.set(score)
     });
   }
 
   private buildFields(requestType: string): SimField[] {
     const common: SimField[] = [
-      { key: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions },
-      { key: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', min: 0, step: 1000 }
+      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions },
+      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', min: 0, step: 1000 }
     ];
 
     switch (requestType) {
       case 'TARJETA_CREDITO':
         return [
-          { key: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', min: 0, step: 100 },
-          { key: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
-          { key: 'isRevolving', label: 'Revolving', type: 'boolean' },
+          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', min: 0, step: 100 },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
+          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean' },
           ...common
         ];
       case 'HIPOTECA':
         return [
-          { key: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', min: 0, step: 1000 },
-          { key: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', min: 1, step: 12 },
-          { key: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
-          { key: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', min: 0, step: 1000 },
-          { key: 'isFirstHome', label: 'Primera vivienda', type: 'boolean' },
+          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', min: 0, step: 1000 },
+          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', min: 1, step: 12 },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
+          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', min: 0, step: 1000 },
+          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean' },
           ...common
         ];
       default:
         return [
-          { key: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', min: 0, step: 1000 },
-          { key: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', min: 1, step: 12 },
-          { key: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
+          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', min: 0, step: 1000 },
+          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', min: 1, step: 12 },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
           ...common
         ];
     }
@@ -329,7 +358,8 @@ export class SimulateComponent implements OnInit {
   private resetForm(req: RequestDetails) {
     this.form = this.fb.group({});
     for (const field of this.fields()) {
-      const value = ((req as unknown) as Record<string, unknown>)[field.key];
+      const source = field.sourceKey ?? field.key;
+      const value = ((req as unknown) as Record<string, unknown>)[source];
       const control = this.fb.control(
         value ?? (field.type === 'boolean' ? false : value ?? null),
         field.type === 'number' ? Validators.min(field.min ?? 0) : undefined
@@ -344,7 +374,7 @@ export class SimulateComponent implements OnInit {
     const payload = {
       requestId: this.requestId(),
       requestType: this.request()?.requestType ?? 'PRESTAMO',
-      formChanges: this.form.value
+      formChanges: this.formatFormChanges(this.form.value)
     };
     this.simulationService.draft(payload).subscribe({
       next: res => this.draft.set(res),
@@ -376,7 +406,7 @@ export class SimulateComponent implements OnInit {
       requestId: req.requestId,
       partyId: party.partyId,
       baseScoringId: score.scoringId,
-      formChanges: this.form.value,
+      formChanges: this.formatFormChanges(this.form.value),
       simulatedPd: d.simulatedResults.pd,
       simulatedLgd: d.simulatedResults.lgd,
       simulatedEad: d.simulatedResults.ead,
@@ -402,5 +432,9 @@ export class SimulateComponent implements OnInit {
     if (['A', 'B', 'C', 'D'].includes(grade)) return 'APROBADO';
     if (['E', 'F'].includes(grade)) return 'PENDIENTE_DE_REVISION';
     return 'RECHAZADO';
+  }
+
+  private formatFormChanges(rawValues: any): any {
+    return { ...rawValues };
   }
 }

@@ -33,7 +33,58 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
     MortgageFieldsComponent
   ],
   template: `
-    @if (request(); as req) {
+    @if (isLoading()) {
+      <app-page-header title="Solicitud" subtitle="Cargando..." />
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+          <p-card styleClass="rounded-xl shadow-sm">
+            <ng-template pTemplate="content">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @for (i of [1,2,3,4]; track i) {
+                  <div class="space-y-2">
+                    <div class="h-3 w-20 bg-surface-200 rounded animate-pulse"></div>
+                    <div class="h-4 w-40 bg-surface-200 rounded animate-pulse"></div>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </p-card>
+          <p-card styleClass="rounded-xl shadow-sm">
+            <ng-template pTemplate="content">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @for (i of [1,2]; track i) {
+                  <div class="space-y-2">
+                    <div class="h-3 w-28 bg-surface-200 rounded animate-pulse"></div>
+                    <div class="h-4 w-36 bg-surface-200 rounded animate-pulse"></div>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </p-card>
+        </div>
+        <div>
+          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-200">
+            <ng-template pTemplate="content">
+              <div class="space-y-4">
+                <div class="h-3 w-28 bg-surface-200 rounded animate-pulse"></div>
+                <div class="h-8 w-40 bg-surface-200 rounded animate-pulse"></div>
+                <p-divider />
+                @for (i of [1,2,3,4]; track i) {
+                  <div class="flex justify-between">
+                    <div class="h-3 w-24 bg-surface-200 rounded animate-pulse"></div>
+                    <div class="h-3 w-20 bg-surface-200 rounded animate-pulse"></div>
+                  </div>
+                }
+                <p-divider />
+                <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
+                <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
+              </div>
+            </ng-template>
+          </p-card>
+        </div>
+      </div>
+    } @else {
+      @let req = request()!;
       <app-page-header [title]="pageTitle()" [subtitle]="req.requestId" />
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -42,7 +93,7 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
                 <i class="pi pi-user"></i>
-                <span>Datos del cliente</span>
+                <span>Datos del cliente</span>q
               </div>
             </ng-template>
             <ng-template pTemplate="content">
@@ -165,8 +216,6 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
           </p-card>
         </div>
       </div>
-    } @else {
-      <app-page-header title="Cargando solicitud..." />
     }
   `
 })
@@ -176,6 +225,7 @@ export class RequestDetailComponent implements OnInit {
   private requestService = inject(RequestService);
 
   request = signal<RequestDetails | undefined>(undefined);
+  isLoading = signal(true);
 
   pageTitle = computed(() => {
     const req = this.request();
@@ -191,7 +241,10 @@ export class RequestDetailComponent implements OnInit {
     }
 
     this.requestService.get(id).subscribe({
-      next: req => this.request.set(req),
+      next: req => {
+        this.request.set(req);
+        this.isLoading.set(false);
+      },
       error: () => this.router.navigate(['/requests'])
     });
   }

@@ -32,3 +32,67 @@ body {
 p-card .p-card-content {
   padding: 1rem;
 }
+
+/* Estilos de espaciado globales para los p-card de PrimeNG */
+p-card .p-card {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+p-card .p-card-body {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+
+/* ==========================================================================
+   RIntellix Custom Layout & Typography Classes
+   ========================================================================== */
+
+/* Main Layout Grids */
+.app-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .app-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.5rem; /* Equivalent to gap-10 */
+  }
+}
+
+.app-grid-main-cols {
+  grid-column: span 1 / span 1;
+}
+@media (min-width: 1024px) {
+  .app-grid-main-cols {
+    grid-column: span 2 / span 2;
+  }
+}
+
+/* Stacks / Margins */
+.section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Equivalent to space-y-6 */
+}
+
+/* Semantic Field Containers */
+.field-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field-label {
+  font-size: 0.875rem; /* text-sm */
+  color: var(--color-rintellix-muted-foreground);
+  font-weight: 400;
+}
+
+.field-value {
+  font-weight: 500; /* font-medium */
+  color: #0F172A; /* text-surface-900 */
+}
+

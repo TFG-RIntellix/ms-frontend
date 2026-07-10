@@ -108,7 +108,7 @@ export class ReportsComponent implements OnInit {
     }
 
     combineLatest([
-      this.searchControl.valueChanges.pipe(startWith(''), debounceTime(300), distinctUntilChanged())
+      this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged())
     ])
       .pipe(
         switchMap(([search]) => {

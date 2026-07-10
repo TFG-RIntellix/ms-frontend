@@ -17,6 +17,14 @@ import Keycloak from 'keycloak-js';
 
       <nav class="flex-1 px-4 py-4 space-y-1">
         <a
+          routerLink="/home"
+          routerLinkActive="active-nav"
+          class="nav-link"
+        >
+          <i class="pi pi-home"></i>
+          <span>Inicio</span>
+        </a>
+        <a
           routerLink="/requests"
           routerLinkActive="active-nav"
           class="nav-link"

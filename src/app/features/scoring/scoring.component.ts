@@ -35,9 +35,59 @@ import { TagSeverity } from '../../core/utils/tag-severity';
   template: `
     <app-page-header title="Scoring" [subtitle]="'Solicitud ' + requestId()" />
 
-    @if (scoring(); as s) {
+    @if (isLoading()) {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
+          <p-card styleClass="rounded-xl shadow-sm">
+            <ng-template pTemplate="content">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                @for (i of [1,2,3,4]; track i) {
+                  <div class="space-y-2 p-3 border border-surface-200 rounded-lg">
+                    <div class="h-3 w-16 bg-surface-200 rounded animate-pulse"></div>
+                    <div class="h-6 w-20 bg-surface-200 rounded animate-pulse"></div>
+                  </div>
+                }
+              </div>
+              <p-divider />
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                @for (i of [1,2,3,4]; track i) {
+                  <div class="space-y-2 p-3 border border-surface-200 rounded-lg">
+                    <div class="h-3 w-20 bg-surface-200 rounded animate-pulse"></div>
+                    <div class="h-6 w-24 bg-surface-200 rounded animate-pulse"></div>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </p-card>
+          <p-card styleClass="rounded-xl shadow-sm">
+            <ng-template pTemplate="content">
+              @for (i of [1,2,3]; track i) {
+                <div class="flex justify-between items-center py-3 border-b border-surface-100">
+                  <div class="h-3 w-32 bg-surface-200 rounded animate-pulse"></div>
+                  <div class="h-3 w-20 bg-surface-200 rounded animate-pulse"></div>
+                </div>
+              }
+            </ng-template>
+          </p-card>
+        </div>
+        <div>
+          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-200">
+            <ng-template pTemplate="content">
+              <div class="space-y-4">
+                <div class="h-3 w-36 bg-surface-200 rounded animate-pulse"></div>
+                <div class="h-8 w-32 bg-surface-200 rounded animate-pulse"></div>
+                <p-divider />
+                <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
+                <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
+              </div>
+            </ng-template>
+          </p-card>
+        </div>
+      </div>
+    } @else if (scoring()) {
+      @let s = scoring()!;
+      <div class="app-grid-3">
+        <div class="app-grid-main-cols section-stack">
           <p-card styleClass="rounded-xl shadow-sm">
             <ng-template pTemplate="title">
               <div class="flex items-center justify-between">
@@ -102,12 +152,14 @@ import { TagSeverity } from '../../core/utils/tag-severity';
           </p-card>
         </div>
 
-        <div class="space-y-6">
+        <div class="section-stack">
           <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500">
             <ng-template pTemplate="content">
-              <label class="text-sm text-surface-500">Ingreso disponible mensual</label>
-              <div class="text-3xl font-bold text-surface-900 mt-1">
-                {{ s.monthlyDisposableIncome | currencyValue }}
+              <div class="field-container">
+                <label class="field-label">Ingreso disponible mensual</label>
+                <div class="text-3xl font-bold text-surface-900 mt-1">
+                  {{ s.monthlyDisposableIncome | currencyValue }}
+                </div>
               </div>
 
               <p-divider />
@@ -153,6 +205,7 @@ export class ScoringComponent implements OnInit {
 
   requestId = signal('');
   scoring = signal<Scoring | undefined>(undefined);
+  isLoading = signal(true);
 
   riskSeverity = computed<TagSeverity>(() => (riskGradeColor[this.scoring()?.riskGrade ?? ''] ?? 'info') as TagSeverity);
 
@@ -164,8 +217,14 @@ export class ScoringComponent implements OnInit {
     }
     this.requestId.set(id);
     this.scoringService.getByRequest(id).subscribe({
-      next: res => this.scoring.set(res),
-      error: () => this.scoring.set(undefined)
+      next: res => {
+        this.scoring.set(res);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.scoring.set(undefined);
+      }
     });
   }
 

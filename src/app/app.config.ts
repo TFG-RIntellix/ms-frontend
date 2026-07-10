@@ -1,7 +1,7 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { providePrimeNG } from 'primeng/config';
 import {
   provideKeycloak,
@@ -16,18 +16,18 @@ import { keycloakConfig } from './core/auth/keycloak.config';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    provideRouter(routes, withPreloading(PreloadAllModules)),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [
         {
-          urlPattern: /^(http:\/\/localhost:8080)(\/.*)?$/i,
+          urlPattern: /^(http:\/\/localhost:8085)(\/.*)?$/i,
           httpMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
         }
       ]
     },
-    provideAnimationsAsync(),
+    provideAnimations(),
     providePrimeNG({
       theme: {
         preset: RintellixPreset,

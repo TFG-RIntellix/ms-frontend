@@ -10,11 +10,12 @@ export const routes: Routes = [
     component: MainLayoutComponent,
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'requests', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'home', loadComponent: () => import('./features/home/home.component').then(c => c.HomeComponent) },
       { path: 'requests', loadChildren: () => import('./features/requests/requests.routes').then(m => m.REQUEST_ROUTES) },
       { path: 'simulations', loadComponent: () => import('./features/simulations/simulations.component').then(c => c.SimulationsComponent) },
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then(c => c.ReportsComponent) }
     ]
   },
-  { path: '**', redirectTo: 'requests' }
+  { path: '**', redirectTo: 'home' }
 ];
