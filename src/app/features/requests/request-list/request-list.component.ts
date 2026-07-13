@@ -9,6 +9,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
 import { CardModule } from 'primeng/card';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { RequestService, RequestListFilter } from '../../../core/services/request.service';
 import { RequestSummary } from '../../../core/models/request.model';
@@ -34,7 +35,8 @@ import { statusLabel } from '../../../core/utils/labels';
     PageHeaderComponent,
     StatusBadgeComponent,
     CurrencyValuePipe,
-    RequestTypeLabelPipe
+    RequestTypeLabelPipe,
+    ProgressSpinnerModule
   ],
   template: `
     <app-page-header
@@ -67,45 +69,52 @@ import { statusLabel } from '../../../core/utils/labels';
           />
         </div>
 
-        <p-table
-          #dt
-          [value]="requests()"
-          dataKey="requestId"
-          [paginator]="true"
-          [rows]="10"
-          [rowsPerPageOptions]="[10, 25, 50]"
-          [globalFilterFields]="['partyName', 'requestId', 'requestType']"
-          [loading]="isLoading()"
-          [tableStyle]="{'min-width':'60rem'}"
-          styleClass="p-datatable-sm"
-        >
-          <ng-template pTemplate="header">
-            <tr>
-              <th pSortableColumn="requestId" class="font-semibold">ID <p-sortIcon field="requestId" /></th>
-              <th pSortableColumn="partyName" class="font-semibold">Cliente <p-sortIcon field="partyName" /></th>
-              <th class="font-semibold">Producto</th>
-              <th pSortableColumn="amount" class="font-semibold text-right">Importe</th>
-              <th class="font-semibold">Estado</th>
-              <th pSortableColumn="creationDate" class="font-semibold">Creada</th>
-              <th></th>
-            </tr>
-          </ng-template>
+        @if (!hasLoadedOnce()) {
+          <div class="flex justify-center items-center min-h-[400px]">
+            <div class="rintellix-spinner"></div>
+          </div>
+        } @else {
+          <p-table
+            #dt
+            [value]="requests()"
+            dataKey="requestId"
+            [paginator]="true"
+            [rows]="10"
+            [rowsPerPageOptions]="[10, 25, 50]"
+            [globalFilterFields]="['partyName', 'requestId', 'requestType']"
+            [loading]="isLoading()"
+            [tableStyle]="{'min-width':'60rem'}"
+            styleClass="p-datatable-sm"
+          >
 
-          <ng-template pTemplate="body" let-request>
-            <tr
-              [routerLink]="['/requests', request.requestId]"
-              class="cursor-pointer hover:bg-surface-100 transition"
-            >
-              <td class="font-mono text-surface-600">{{ request.requestId }}</td>
-              <td class="font-medium text-surface-900">{{ request.partyName }}</td>
-              <td>{{ request.requestType | requestTypeLabel }}</td>
-              <td class="text-right font-mono">{{ request.amount | currencyValue:request.currency }}</td>
-              <td><app-status-badge [status]="request.status" /></td>
-              <td class="text-surface-500 text-sm">{{ request.creationDate | date:'dd/MM/yyyy' }}</td>
-              <td><i class="pi pi-chevron-right text-surface-400"></i></td>
-            </tr>
-          </ng-template>
-        </p-table>
+            <ng-template pTemplate="header">
+              <tr>
+                <th pSortableColumn="requestId" class="font-semibold">ID <p-sortIcon field="requestId" /></th>
+                <th pSortableColumn="partyName" class="font-semibold">Cliente <p-sortIcon field="partyName" /></th>
+                <th class="font-semibold">Producto</th>
+                <th pSortableColumn="amount" class="font-semibold text-right">Importe <p-sortIcon field="amount" /></th>
+                <th class="font-semibold">Estado</th>
+                <th pSortableColumn="creationDate" class="font-semibold">Creada <p-sortIcon field="creationDate" /></th>
+                <th></th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-request>
+              <tr
+                [routerLink]="['/requests', request.requestId]"
+                class="cursor-pointer hover:bg-surface-100 transition"
+              >
+                <td class="font-mono text-surface-600">{{ request.requestId }}</td>
+                <td class="font-medium text-surface-900">{{ request.partyName }}</td>
+                <td>{{ request.requestType | requestTypeLabel }}</td>
+                <td class="text-right font-mono">{{ request.amount | currencyValue:request.currency }}</td>
+                <td><app-status-badge [status]="request.status" /></td>
+                <td class="text-surface-500 text-sm">{{ request.creationDate | date:'dd/MM/yyyy' }}</td>
+                <td><i class="pi pi-chevron-right text-surface-400"></i></td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
       </ng-template>
     </p-card>
   `
@@ -117,6 +126,7 @@ export class RequestListComponent implements OnInit {
 
   requests = signal<RequestSummary[]>([]);
   isLoading = signal(false);
+  hasLoadedOnce = signal(false);
 
   searchControl = new FormControl('');
   statusControl = new FormControl('');
@@ -129,10 +139,10 @@ export class RequestListComponent implements OnInit {
       this.statusControl.valueChanges.pipe(startWith(''), distinctUntilChanged())
     ])
       .pipe(
-        switchMap(([partyName, status]) => {
+        switchMap(([search, status]) => {
           this.isLoading.set(true);
           const filters: RequestListFilter = {};
-          if (partyName) filters.partyName = partyName;
+          if (search) filters.search = search;
           if (status) filters.requestStatus = status;
           return this.requestService.list(filters);
         })
@@ -141,11 +151,13 @@ export class RequestListComponent implements OnInit {
         next: list => {
           this.requests.set(list);
           this.isLoading.set(false);
+          this.hasLoadedOnce.set(true);
           console.log('Requests list:', list);
         },
         error: () => {
           this.requests.set([]);
           this.isLoading.set(false);
+          this.hasLoadedOnce.set(true);
         }
       });
   }

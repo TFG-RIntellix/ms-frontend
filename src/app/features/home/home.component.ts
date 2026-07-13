@@ -2,13 +2,25 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
-import { ButtonModule } from 'primeng/button';
+import { ButtonModule, ButtonSeverity } from 'primeng/button';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
+import { LottieComponent, AnimationOptions } from 'ngx-lottie';
+
+interface DashboardCard {
+  title: string;
+  description: string;
+  icon: string;
+  iconBgClass: string;
+  iconTextClass: string;
+  buttonLabel: string;
+  buttonSeverity: ButtonSeverity;
+  route: string;
+}
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, CardModule, ButtonModule, PageHeaderComponent],
+  imports: [CommonModule, RouterLink, CardModule, ButtonModule, PageHeaderComponent, LottieComponent],
   template: `
     <app-page-header
       title="Inicio"
@@ -17,73 +29,66 @@ import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.com
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
       <!-- Solicitudes Card -->
+      @for (card of menuCards; track card.title) {
       <p-card styleClass="rounded-xl shadow-sm hover:shadow-md transition h-full">
         <ng-template pTemplate="content">
           <div class="flex flex-col items-center text-center space-y-4 py-4">
-            <div class="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
-              <i class="pi pi-users text-3xl text-primary-600"></i>
+            <div [class]="'w-24 h-24 rounded-full flex items-center justify-center ' + card.iconBgClass">
+              <ng-lottie [options]="{path: card.icon}" width="80px" height="80px" />
             </div>
-            <h3 class="text-xl font-semibold text-surface-900">Solicitudes</h3>
+            <h3 class="text-xl font-semibold text-surface-900">{{ card.title }}</h3>
             <p class="text-surface-500 flex-1">
-              Gestiona, evalúa y resuelve las solicitudes de riesgo de los clientes con el motor inteligente.
+              {{ card.description }}
             </p>
             <p-button
-              label="Ver solicitudes"
+              [label]="card.buttonLabel"
               icon="pi pi-arrow-right"
               iconPos="right"
               styleClass="w-full"
-              routerLink="/requests"
+              [severity]="card.buttonSeverity"
+              [routerLink]="card.route"
             />
           </div>
         </ng-template>
       </p-card>
-
-      <!-- Simulaciones Card -->
-      <p-card styleClass="rounded-xl shadow-sm hover:shadow-md transition h-full">
-        <ng-template pTemplate="content">
-          <div class="flex flex-col items-center text-center space-y-4 py-4">
-            <div class="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
-              <i class="pi pi-chart-line text-3xl text-blue-600"></i>
-            </div>
-            <h3 class="text-xl font-semibold text-surface-900">Simulaciones</h3>
-            <p class="text-surface-500 flex-1">
-              Carga escenarios y simulaciones guardadas para comparar opciones de mitigación de riesgo.
-            </p>
-            <p-button
-              label="Ver simulaciones"
-              icon="pi pi-arrow-right"
-              iconPos="right"
-              styleClass="w-full"
-              severity="info"
-              routerLink="/simulations"
-            />
-          </div>
-        </ng-template>
-      </p-card>
-
-      <!-- Informes Card -->
-      <p-card styleClass="rounded-xl shadow-sm hover:shadow-md transition h-full">
-        <ng-template pTemplate="content">
-          <div class="flex flex-col items-center text-center space-y-4 py-4">
-            <div class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-              <i class="pi pi-file-pdf text-3xl text-green-600"></i>
-            </div>
-            <h3 class="text-xl font-semibold text-surface-900">Informes</h3>
-            <p class="text-surface-500 flex-1">
-              Genera y descarga informes regulatorios y analíticos del estado actual de la cartera.
-            </p>
-            <p-button
-              label="Ver informes"
-              icon="pi pi-arrow-right"
-              iconPos="right"
-              styleClass="w-full"
-              severity="success"
-              routerLink="/reports"
-            />
-          </div>
-        </ng-template>
-      </p-card>
+      }
     </div>
-  `
+    `
 })
-export class HomeComponent {}
+
+export class HomeComponent {
+
+  readonly menuCards: DashboardCard[] = [
+    {
+      title: 'Solicitudes',
+      description: 'Gestiona, evalúa y resuelve las solicitudes de riesgo de los clientes con el motor inteligente.',
+      icon: '/assets/icons/REQUESTS.json',
+      iconBgClass: 'bg-primary-100',
+      iconTextClass: 'text-primary-600',
+      buttonLabel: 'Ver solicitudes',
+      buttonSeverity: undefined, // Color primario por defecto
+      route: '/requests'
+    },
+    {
+      title: 'Simulaciones',
+      description: 'Carga escenarios y simulaciones guardadas para comparar opciones de mitigación de riesgo.',
+      icon: '/assets/icons/SIMULATIONS.json',
+      iconBgClass: 'bg-blue-100',
+      iconTextClass: 'text-blue-600',
+      buttonLabel: 'Ver simulaciones',
+      buttonSeverity: 'info',
+      route: '/simulations'
+    },
+    {
+      title: 'Informes',
+      description: 'Descarga informes regulatorios y analíticos del estado actual de la cartera.',
+      icon: '/assets/icons/REPORTS.json',
+      iconBgClass: 'bg-green-100',
+      iconTextClass: 'text-green-600',
+      buttonLabel: 'Ver informes',
+      buttonSeverity: 'success',
+      route: '/reports'
+    }
+  ];
+
+}

@@ -12,8 +12,7 @@ import {
 } from '../models/simulation.model';
 
 export interface SimulationListFilter {
-  requestId?: string;
-  partyName?: string;
+  search?: string;
   partyId?: string;
   archived?: boolean;
 }
@@ -50,6 +49,6 @@ export class SimulationService {
   }
 
   delete(simulationId: string) {
-    return this.http.delete(`${this.apiUrl}/api/simulations/${simulationId}`);
+    return this.http.delete(`${this.apiUrl}/api/simulations/${simulationId}`, { responseType: 'text' });
   }
 }

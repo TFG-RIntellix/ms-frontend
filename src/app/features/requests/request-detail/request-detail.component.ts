@@ -14,6 +14,7 @@ import { requestTypeLabel } from '../../../core/utils/labels';
 import { LoanFieldsComponent } from '../components/loan-fields.component';
 import { CreditCardFieldsComponent } from '../components/credit-card-fields.component';
 import { MortgageFieldsComponent } from '../components/mortgage-fields.component';
+import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
 
 @Component({
   selector: 'app-request-detail',
@@ -30,58 +31,13 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
     RequestTypeLabelPipe,
     LoanFieldsComponent,
     CreditCardFieldsComponent,
-    MortgageFieldsComponent
+    MortgageFieldsComponent,
+    DetailFieldComponent
   ],
   template: `
     @if (isLoading()) {
-      <app-page-header title="Solicitud" subtitle="Cargando..." />
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-6">
-          <p-card styleClass="rounded-xl shadow-sm">
-            <ng-template pTemplate="content">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                @for (i of [1,2,3,4]; track i) {
-                  <div class="space-y-2">
-                    <div class="h-3 w-20 bg-surface-200 rounded animate-pulse"></div>
-                    <div class="h-4 w-40 bg-surface-200 rounded animate-pulse"></div>
-                  </div>
-                }
-              </div>
-            </ng-template>
-          </p-card>
-          <p-card styleClass="rounded-xl shadow-sm">
-            <ng-template pTemplate="content">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                @for (i of [1,2]; track i) {
-                  <div class="space-y-2">
-                    <div class="h-3 w-28 bg-surface-200 rounded animate-pulse"></div>
-                    <div class="h-4 w-36 bg-surface-200 rounded animate-pulse"></div>
-                  </div>
-                }
-              </div>
-            </ng-template>
-          </p-card>
-        </div>
-        <div>
-          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-200">
-            <ng-template pTemplate="content">
-              <div class="space-y-4">
-                <div class="h-3 w-28 bg-surface-200 rounded animate-pulse"></div>
-                <div class="h-8 w-40 bg-surface-200 rounded animate-pulse"></div>
-                <p-divider />
-                @for (i of [1,2,3,4]; track i) {
-                  <div class="flex justify-between">
-                    <div class="h-3 w-24 bg-surface-200 rounded animate-pulse"></div>
-                    <div class="h-3 w-20 bg-surface-200 rounded animate-pulse"></div>
-                  </div>
-                }
-                <p-divider />
-                <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
-                <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
-              </div>
-            </ng-template>
-          </p-card>
-        </div>
+      <div class="flex justify-center items-center h-[calc(100vh-100px)]">
+        <div class="rintellix-spinner"></div>
       </div>
     } @else {
       @let req = request()!;
@@ -93,31 +49,16 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
                 <i class="pi pi-user"></i>
-                <span>Datos del cliente</span>q
+                <span>Datos del cliente</span>
               </div>
             </ng-template>
             <ng-template pTemplate="content">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="text-sm text-surface-500">Nombre</label>
-                  <p class="font-medium text-surface-900">{{ req.partyName }}</p>
-                </div>
-                <div>
-                  <label class="text-sm text-surface-500">NIF</label>
-                  <p class="font-medium text-surface-900">{{ req.partyNIF ?? '-' }}</p>
-                </div>
-                <div>
-                  <label class="text-sm text-surface-500">Teléfono</label>
-                  <p class="font-medium text-surface-900">{{ req.partyPhoneNumber ?? '-' }}</p>
-                </div>
-                <div>
-                  <label class="text-sm text-surface-500">Email</label>
-                  <p class="font-medium text-surface-900">{{ req.partyEmail ?? '-' }}</p>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="text-sm text-surface-500">Dirección</label>
-                  <p class="font-medium text-surface-900">{{ req.partyAddress ?? '-' }}</p>
-                </div>
+                <app-detail-field label="Nombre">{{ req.partyName }}</app-detail-field>
+                <app-detail-field label="NIF">{{ req.partyNIF ?? '-' }}</app-detail-field>
+                <app-detail-field label="Teléfono">{{ req.partyPhoneNumber ?? '-' }}</app-detail-field>
+                <app-detail-field label="Email">{{ req.partyEmail ?? '-' }}</app-detail-field>
+                <app-detail-field label="Dirección">{{ req.partyAddress ?? '-' }}</app-detail-field>
               </div>
             </ng-template>
           </p-card>
@@ -131,14 +72,8 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
             </ng-template>
             <ng-template pTemplate="content">
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label class="text-sm text-surface-500">Situación laboral</label>
-                  <p class="font-medium text-surface-900">{{ req.partyLaboralSituation ?? '-' }}</p>
-                </div>
-                <div>
-                  <label class="text-sm text-surface-500">Ingresos anuales</label>
-                  <p class="font-medium text-surface-900">{{ req.partyIncome | currencyValue:req.currency }}</p>
-                </div>
+                <app-detail-field label="Situación laboral">{{ req.partyLaboralSituation ?? '-' }}</app-detail-field>
+                <app-detail-field label="Ingresos anuales">{{ req.partyIncome | currencyValue:req.currency }}</app-detail-field>
               </div>
             </ng-template>
           </p-card>
@@ -169,10 +104,9 @@ import { MortgageFieldsComponent } from '../components/mortgage-fields.component
         <div class="space-y-6">
           <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500">
             <ng-template pTemplate="content">
-              <label class="text-sm text-surface-500">Importe principal</label>
-              <div class="text-3xl font-bold text-surface-900 mt-1">
-                {{ mainAmount(req) | currencyValue:req.currency }}
-              </div>
+              <app-detail-field label="Importe principal">
+                <span class="text-3xl font-bold text-surface-900">{{ mainAmount(req) | currencyValue:req.currency }}</span>
+              </app-detail-field>
 
               <p-divider />
 

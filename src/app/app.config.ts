@@ -1,4 +1,5 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideLottieOptions } from 'ngx-lottie';
 import { provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -17,6 +18,9 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withPreloading(PreloadAllModules)),
+    provideLottieOptions({
+      player: () => import('lottie-web'),
+    }),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,

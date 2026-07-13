@@ -6,7 +6,7 @@ import { RequestDetails, RequestParty, RequestSummary } from '../models/request.
 import { Scoring } from '../models/scoring.model';
 
 export interface RequestListFilter {
-  partyName?: string;
+  search?: string;
   partyId?: string;
   requestStatus?: string;
 }

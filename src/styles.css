@@ -55,16 +55,19 @@ p-card .p-card-body {
   grid-template-columns: 1fr;
   gap: 1.5rem;
 }
+
 @media (min-width: 1024px) {
   .app-grid-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2.5rem; /* Equivalent to gap-10 */
+    gap: 2.5rem;
+    /* Equivalent to gap-10 */
   }
 }
 
 .app-grid-main-cols {
   grid-column: span 1 / span 1;
 }
+
 @media (min-width: 1024px) {
   .app-grid-main-cols {
     grid-column: span 2 / span 2;
@@ -75,7 +78,8 @@ p-card .p-card-body {
 .section-stack {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Equivalent to space-y-6 */
+  gap: 1.5rem;
+  /* Equivalent to space-y-6 */
 }
 
 /* Semantic Field Containers */
@@ -86,13 +90,76 @@ p-card .p-card-body {
 }
 
 .field-label {
-  font-size: 0.875rem; /* text-sm */
+  font-size: 0.875rem;
+  /* text-sm */
   color: var(--color-rintellix-muted-foreground);
   font-weight: 400;
 }
 
 .field-value {
-  font-weight: 500; /* font-medium */
-  color: #0F172A; /* text-surface-900 */
+  font-weight: 500;
+  /* font-medium */
+  color: #0F172A;
+  /* text-surface-900 */
 }
 
+/* ==========================================================================
+   Custom Components Styling
+   ========================================================================== */
+
+/* Custom Progress Spinner */
+.custom-spinner .p-progress-spinner-circle {
+  stroke: #8B0000 !important;
+  /* Rojo granate */
+}
+
+/* Hacer transparente el fondo de carga de la tabla (reseteo completo de variables y clases de overlay) */
+:root, 
+.p-datatable, 
+.p-datatable-loading-overlay, 
+.p-component-overlay {
+  --p-mask-background: transparent !important;
+  --p-datatable-loading-overlay-background: transparent !important;
+}
+
+.p-datatable-loading-overlay,
+.p-component-overlay,
+.p-datatable-mask,
+.p-mask,
+.p-datatable .p-datatable-loading-overlay,
+.p-component-overlay.p-datatable-loading-overlay,
+.p-datatable-loading-icon {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Asegurar que el spinner no tenga fondos heredados o sombras */
+.custom-spinner,
+.custom-spinner .p-progress-spinner,
+.custom-spinner .p-progress-spinner-svg {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Spinner personalizado de RIntellix (círculo perfecto con canal rojo oscuro) */
+.rintellix-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(74, 0, 2, 0.2); /* Rojo muy oscuro translúcido como canal base */
+  border-top: 4px solid #F30005; /* Rojo RIntellix primario activo */
+  border-radius: 50%;
+  animation: rintellix-spin 0.8s linear infinite;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+@keyframes rintellix-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

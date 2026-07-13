@@ -40,11 +40,6 @@ export interface SimulationDetails {
   partyId: string;
   baseScoringId: string;
   formChanges: Record<string, unknown>;
-  basePd: number;
-  baseLgd: number;
-  baseEad: number;
-  baseEcl: number;
-  baseRiskGrade: string;
   simulatedPd: number;
   simulatedLgd: number;
   simulatedEad: number;
@@ -77,15 +72,8 @@ export interface CreateSimulationPayload {
   partyId: string;
   baseScoringId: string;
   formChanges: Record<string, unknown>;
-  simulatedPd: number;
-  simulatedLgd: number;
-  simulatedEad: number;
-  simulatedEcl: number;
-  simulatedRiskGrade: string;
-  simulatedDecision: string;
-  pdChange: number;
-  elChange: number;
-  riskGradeChange: string;
+  simulatedResults: SimulationMetrics & { decision: string };
+  delta: SimulationDelta;
 }
 
 export interface UpdateSimulationPayload extends CreateSimulationPayload {}

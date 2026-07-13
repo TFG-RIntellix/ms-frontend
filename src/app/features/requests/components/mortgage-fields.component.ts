@@ -1,87 +1,47 @@
 import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CardModule } from 'primeng/card';
 import { RequestDetails } from '../../../core/models/request.model';
 import { CurrencyValuePipe } from '../../../shared/ui/currency-value/currency-value.pipe';
 import { PurposeLabelPipe } from '../../../shared/pipes/purpose-label.pipe';
+import { InfoCardComponent } from '../../../shared/ui/info-card/info-card.component';
 
 @Component({
   selector: 'app-mortgage-fields',
   standalone: true,
-  imports: [CommonModule, CardModule, CurrencyValuePipe, PurposeLabelPipe],
+  imports: [CommonModule, InfoCardComponent, CurrencyValuePipe, PurposeLabelPipe],
   template: `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Importe solicitado</label>
-          <div class="text-2xl font-bold text-surface-900 mt-2">
-            {{ request().requestedAmount | currencyValue:request().currency }}
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Importe solicitado">
+        {{ request().requestedAmount | currencyValue:request().currency }}
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Valor de la propiedad</label>
-          <div class="text-2xl font-bold text-surface-900 mt-2">
-            {{ request().propertyValue | currencyValue:request().currency }}
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Valor de la propiedad">
+        {{ request().propertyValue | currencyValue:request().currency }}
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Primera vivienda</label>
-          <div class="text-2xl font-bold text-surface-900 mt-2">
-            {{ request().isFirstHome ? 'Sí' : 'No' }}
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Primera vivienda">
+        {{ request().isFirstHome ? 'Sí' : 'No' }}
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Plazo</label>
-          <div class="text-2xl font-bold text-surface-900 mt-2">
-            {{ request().requestTermMonths }} meses
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Plazo">
+        {{ request().requestTermMonths }} meses
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Tipo de interés</label>
-          <div class="text-2xl font-bold text-surface-900 mt-2">
-            {{ request().interestRate | number:'1.2-2' }}%
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Tipo de interés">
+        {{ request().interestRate | number:'1.2-2' }}%
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Finalidad</label>
-          <div class="text-xl font-bold text-surface-900 mt-2">
-            {{ request().purpose | purposeLabel }}
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Finalidad">
+        {{ request().purpose | purposeLabel }}
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Tipo de hipoteca</label>
-          <div class="text-xl font-bold text-surface-900 mt-2">
-            {{ request().loanType ?? '-' }}
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Tipo de hipoteca">
+        {{ request().loanType ?? '-' }}
+      </app-info-card>
 
-      <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 h-full">
-        <ng-template pTemplate="content">
-          <label class="text-base font-bold text-surface-800">Sistema de amortización</label>
-          <div class="text-xl font-bold text-surface-900 mt-2">
-            {{ request().repaymentSystem ?? '-' }}
-          </div>
-        </ng-template>
-      </p-card>
+      <app-info-card label="Sistema de amortización">
+        {{ request().repaymentSystem ?? '-' }}
+      </app-info-card>
     </div>
   `
 })

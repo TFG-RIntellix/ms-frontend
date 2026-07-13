@@ -1,9 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { BehaviorSubject, combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, startWith, switchMap } from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, startWith, switchMap, catchError } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -21,6 +21,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     ReactiveFormsModule,
     CardModule,
     ButtonModule,
@@ -60,7 +61,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
           />
         </div>
 
-        <p-table
+        @if(!hasLoadedOnce()) {
+          <div class="flex justify-center items-center min-h-[400px]">
+            <div class="rintellix-spinner"></div>
+          </div>
+        } @else {
+          <p-table
           [value]="simulations()"
           [paginator]="true"
           [rows]="10"
@@ -68,7 +74,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
           [loading]="isLoading()"
           [tableStyle]="{'min-width':'50rem'}"
           styleClass="p-datatable-sm"
-        >
+          >
+
           <ng-template pTemplate="header">
             <tr>
               <th>Nombre</th>
@@ -81,12 +88,13 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
           </ng-template>
 
           <ng-template pTemplate="body" let-sim>
-            <tr>
+            <tr [routerLink]="['/simulations', sim.simulationId]" class="cursor-pointer hover:bg-surface-50 transition-colors">
               <td class="font-medium text-surface-900">{{ sim.scenarioName }}</td>
               <td>{{ sim.partyName }}</td>
               <td class="font-mono text-surface-600">{{ sim.requestId }}</td>
               <td class="text-surface-500 text-sm">{{ sim.simulationDate | date:'dd/MM/yyyy' }}</td>
               <td>
+                <!-- TODO: Eliminar la logica de aprobado/rechazado al menos así -->
                 <app-status-badge [status]="sim.isArchived ? 'RECHAZADO' : 'APROBADO'" />
               </td>
               <td class="text-right">
@@ -95,7 +103,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
                     [outlined]="true"
                     [icon]="sim.isArchived ? 'pi pi-refresh' : 'pi pi-folder'"
                     [label]="sim.isArchived ? 'Desarchivar' : 'Archivar'"
-                    (onClick)="toggleArchive(sim)"
+                    (onClick)="toggleArchive(sim); $event.stopPropagation()"
                   />
                   @if (sim.isArchived) {
                     <p-button
@@ -103,7 +111,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
                       [outlined]="true"
                       icon="pi pi-trash"
                       label="Eliminar"
-                      (onClick)="deleteSimulation(sim)"
+                      (onClick)="deleteSimulation(sim); $event.stopPropagation()"
                     />
                   }
                 </div>
@@ -111,6 +119,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
             </tr>
           </ng-template>
         </p-table>
+        }
       </ng-template>
     </p-card>
   `
@@ -121,10 +130,12 @@ export class SimulationsComponent implements OnInit {
 
   simulations = signal<SimulationSummary[]>([]);
   isLoading = signal(false);
+  hasLoadedOnce = signal(false);
 
   searchControl = new FormControl('');
   archivedControl = new FormControl<boolean | null>(false);
   refreshTrigger$ = new BehaviorSubject<void>(undefined);
+  requestIdQueryParam = '';
 
   statusOptions = [
     { label: 'Activas', value: false },
@@ -133,13 +144,10 @@ export class SimulationsComponent implements OnInit {
   ];
 
   ngOnInit() {
-    const requestId = this.route.snapshot.queryParamMap.get('requestId') || '';
-    if (requestId) {
-      this.searchControl.setValue(requestId, { emitEvent: true });
-    }
+    this.requestIdQueryParam = this.route.snapshot.queryParamMap.get('requestId') || '';
 
     combineLatest([
-      this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged()),
+      this.searchControl.valueChanges.pipe(startWith(''), debounceTime(300), distinctUntilChanged()),
       this.archivedControl.valueChanges.pipe(startWith(this.archivedControl.value), distinctUntilChanged()),
       this.refreshTrigger$
     ])
@@ -150,8 +158,7 @@ export class SimulationsComponent implements OnInit {
             archived: archived !== null ? archived : undefined
           };
           if (search) {
-            filters.partyName = search;
-            filters.requestId = search;
+            filters.search = search;
           }
           return this.simulationService.list(filters);
         })
@@ -160,12 +167,18 @@ export class SimulationsComponent implements OnInit {
         next: list => {
           this.simulations.set(list);
           this.isLoading.set(false);
+          this.hasLoadedOnce.set(true);
         },
         error: () => {
           this.simulations.set([]);
           this.isLoading.set(false);
+          this.hasLoadedOnce.set(true);
         }
       });
+
+    if (this.requestIdQueryParam) {
+      this.searchControl.setValue(this.requestIdQueryParam, { emitEvent: true });
+    }
   }
 
   toggleArchive(sim: SimulationSummary) {

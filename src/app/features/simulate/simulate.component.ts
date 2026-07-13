@@ -33,6 +33,8 @@ import { MetricValuePipe } from '../../shared/pipes/metric-value.pipe';
 import { RequestTypeLabelPipe } from '../../shared/pipes/request-type-label.pipe';
 import { employmentStatusOptions } from '../../core/utils/labels';
 import { TagSeverity } from '../../core/utils/tag-severity';
+import { SimulationChartComponent } from '../../shared/ui/simulation-chart/simulation-chart.component';
+import { AmortizationChartComponent } from '../../shared/ui/amortization-chart/amortization-chart.component';
 
 interface SimField {
   key: string;
@@ -63,42 +65,22 @@ interface SimField {
     PageHeaderComponent,
     DeltaChipComponent,
     MetricValuePipe,
-    RequestTypeLabelPipe
+    RequestTypeLabelPipe,
+    SimulationChartComponent,
+    AmortizationChartComponent
   ],
   template: `
     <app-page-header title="Simular escenario" [subtitle]="'Solicitud ' + requestId()" />
 
     @if (isLoading()) {
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <p-card styleClass="rounded-xl shadow-sm">
-          <ng-template pTemplate="title">
-            <div class="h-4 w-48 bg-surface-200 rounded animate-pulse"></div>
-          </ng-template>
-          <ng-template pTemplate="content">
-            <div class="space-y-4">
-              @for (i of [1,2,3,4,5]; track i) {
-                <div class="space-y-2">
-                  <div class="h-3 w-32 bg-surface-200 rounded animate-pulse"></div>
-                  <div class="h-10 w-full bg-surface-200 rounded animate-pulse"></div>
-                </div>
-              }
-              <div class="h-10 w-full bg-primary-200 rounded animate-pulse mt-4"></div>
-            </div>
-          </ng-template>
-        </p-card>
-        <p-card styleClass="rounded-xl shadow-sm">
-          <ng-template pTemplate="title">
-            <div class="h-4 w-56 bg-surface-200 rounded animate-pulse"></div>
-          </ng-template>
-          <ng-template pTemplate="content">
-            <p class="text-surface-400 text-center py-8">Modifica las variables y pulsa <strong>Recalcular</strong> para ver la comparativa.</p>
-          </ng-template>
-        </p-card>
+      <div class="flex justify-center items-center h-[calc(100vh-100px)]">
+        <div class="rintellix-spinner"></div>
       </div>
     } @else {
       @let req = request()!;
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <p-card styleClass="rounded-xl shadow-sm">
+        <div class="space-y-6">
+          <p-card styleClass="rounded-xl shadow-sm">
           <ng-template pTemplate="title">
             <div class="flex items-center justify-between text-surface-900 font-semibold">
               <span>Variables a modificar</span>
@@ -171,21 +153,28 @@ interface SimField {
           </ng-template>
         </p-card>
 
-        <p-card styleClass="rounded-xl shadow-sm">
+        @if (draft()) {
+          <app-amortization-chart [amortization]="amortizationConfig()" />
+        }
+      </div>
+
+      <p-card styleClass="rounded-xl shadow-sm h-fit sticky top-6">
           <ng-template pTemplate="title">
             <span class="text-surface-900 font-semibold">Comparativa con scoring base</span>
           </ng-template>
           <ng-template pTemplate="content">
             @if (draft(); as d) {
               <div class="space-y-4">
-                <div class="grid grid-cols-3 gap-3 text-sm">
+                <div class="grid grid-cols-4 gap-3 text-sm">
+                  <div class="font-medium text-surface-600 pl-2">Métrica</div>
                   <div class="text-center font-medium text-surface-600">Base</div>
                   <div class="text-center font-medium text-surface-900">Simulado</div>
                   <div class="text-center font-medium text-surface-600">Diferencia</div>
                 </div>
 
                 @for (metric of metricRows(); track metric.label) {
-                  <div class="grid grid-cols-3 gap-3 items-center p-3 bg-surface-50 rounded-lg">
+                  <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg">
+                    <div class="font-medium text-surface-700 truncate" [title]="metric.label">{{ metric.label }}</div>
                     <div class="text-right font-mono text-surface-700">{{ metric.base | metricValue:metric }}</div>
                     <div class="text-right font-mono font-semibold text-surface-900">{{ metric.sim | metricValue:metric }}</div>
                     <div class="flex justify-end">
@@ -197,6 +186,8 @@ interface SimField {
                     </div>
                   </div>
                 }
+
+                <app-simulation-chart [metrics]="metricRows()" />
 
                 <p-divider />
 
@@ -271,16 +262,38 @@ export class SimulateComponent implements OnInit {
     const sim = d.simulatedResults;
     const delta = d.delta;
     return [
-      { label: 'PD (%)', base: s.pd * 100, sim: sim.pd * 100, delta: delta.pdChange, isCurrency: false, invert: false, format: '1.2-2' },
-      { label: 'LGD (%)', base: s.lgd * 100, sim: sim.lgd * 100, delta: (sim.lgd - s.lgd) * 100, isCurrency: false, invert: false, format: '1.2-2' },
-      { label: 'EAD', base: s.ead, sim: sim.ead, delta: sim.ead - s.ead, isCurrency: true, invert: false },
-      { label: 'ECL', base: s.ecl, sim: sim.ecl, delta: delta.eclChange, isCurrency: true, invert: false },
-      { label: 'Cuota mensual', base: s.monthlyPayment, sim: sim.monthlyPayment, delta: delta.monthlyPaymentChange, isCurrency: true, invert: false },
-      { label: 'DTI (%)', base: s.dti * 100, sim: sim.dti * 100, delta: delta.dtiChange, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'Pago total', base: s.totalPayment, sim: sim.totalPayment, delta: delta.totalPaymentChange, isCurrency: true, invert: false },
-      { label: 'Intereses totales', base: s.totalInterest, sim: sim.totalInterest, delta: delta.totalInterestChange, isCurrency: true, invert: false },
-      { label: 'Ingreso disponible', base: s.monthlyDisposableIncome, sim: sim.disposableIncome, delta: delta.monthlyDisposableIncomeChange, isCurrency: true, invert: true }
+      { label: 'PD (%)', base: (s.pd ?? 0) * 100, sim: (sim.pd ?? 0) * 100, delta: delta.pdChange ?? 0, isCurrency: false, invert: false, format: '1.2-2' },
+      { label: 'LGD (%)', base: (s.lgd ?? 0) * 100, sim: (sim.lgd ?? 0) * 100, delta: ((sim.lgd ?? 0) - (s.lgd ?? 0)) * 100, isCurrency: false, invert: false, format: '1.2-2' },
+      { label: 'EAD', base: s.ead ?? 0, sim: sim.ead ?? 0, delta: (sim.ead ?? 0) - (s.ead ?? 0), isCurrency: true, invert: false },
+      { label: 'ECL', base: s.ecl ?? 0, sim: sim.ecl ?? 0, delta: delta.eclChange ?? 0, isCurrency: true, invert: false },
+      { label: 'Cuota mensual', base: s.monthlyPayment ?? 0, sim: sim.monthlyPayment ?? 0, delta: delta.monthlyPaymentChange ?? 0, isCurrency: true, invert: false },
+      { label: 'DTI (%)', base: (s.dti ?? 0) * 100, sim: (sim.dti ?? 0) * 100, delta: delta.dtiChange ?? 0, isCurrency: false, invert: true, format: '1.2-2' },
+      { label: 'Pago total', base: s.totalPayment ?? 0, sim: sim.totalPayment ?? 0, delta: delta.totalPaymentChange ?? 0, isCurrency: true, invert: false },
+      { label: 'Intereses totales', base: s.totalInterest ?? 0, sim: sim.totalInterest ?? 0, delta: delta.totalInterestChange ?? 0, isCurrency: true, invert: false },
+      { label: 'Ingreso disponible', base: s.monthlyDisposableIncome ?? 0, sim: sim.disposableIncome ?? 0, delta: delta.monthlyDisposableIncomeChange ?? 0, isCurrency: true, invert: true }
     ];
+  });
+
+  amortizationConfig = computed(() => {
+    const req = this.request();
+    const score = this.scoring();
+    const draft = this.draft();
+    if (!req || !score) return null;
+
+    const basePrincipal = req.requestedAmount ?? req.requestedCreditLimit ?? score.ead;
+    const baseRate = req.interestRate ?? 0;
+    const baseMonths = req.requestTermMonths ?? 12;
+
+    const simForm = this.form.value;
+    const simPrincipal = simForm['loanAmount'] ?? simForm['creditLimit'] ?? basePrincipal;
+    const simRate = simForm['interestRate'] ?? baseRate;
+    const simMonths = simForm['termMonths'] ?? baseMonths;
+    const simPayment = draft?.simulatedResults.monthlyPayment ?? 0;
+
+    return {
+      base: { principal: basePrincipal, rate: baseRate, months: baseMonths, payment: score.monthlyPayment, ecl: score.ecl },
+      sim: draft ? { principal: simPrincipal, rate: simRate, months: simMonths, payment: simPayment, ecl: draft.simulatedResults.ecl } : null
+    };
   });
 
   simRiskSeverity = computed<TagSeverity>(() => {
@@ -407,15 +420,11 @@ export class SimulateComponent implements OnInit {
       partyId: party.partyId,
       baseScoringId: score.scoringId,
       formChanges: this.formatFormChanges(this.form.value),
-      simulatedPd: d.simulatedResults.pd,
-      simulatedLgd: d.simulatedResults.lgd,
-      simulatedEad: d.simulatedResults.ead,
-      simulatedEcl: d.simulatedResults.ecl,
-      simulatedRiskGrade: d.simulatedResults.riskGrade,
-      simulatedDecision: this.inferDecision(d.simulatedResults),
-      pdChange: d.delta.pdChange,
-      elChange: d.delta.eclChange,
-      riskGradeChange: d.delta.riskGradeChange
+      simulatedResults: {
+        ...d.simulatedResults,
+        decision: this.inferDecision(d.simulatedResults)
+      },
+      delta: d.delta
     };
 
     this.simulationService.create(payload).subscribe({
