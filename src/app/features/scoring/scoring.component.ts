@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -7,8 +7,10 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
 import { ProgressBarModule } from 'primeng/progressbar';
+import { Subscription, timer } from 'rxjs';
 
 import { ScoringService } from '../../core/services/scoring.service';
+import { ReportService } from '../../core/services/report.service';
 import { Scoring } from '../../core/models/scoring.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { MetricCardComponent } from '../../shared/ui/metric-card/metric-card.component';
@@ -120,14 +122,23 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
                   icon="pi pi-sliders-h"
                   [routerLink]="['/requests', requestId(), 'simulate']"
                 />
-                <p-button
-                  styleClass="w-full"
-                  label="Ver informes"
-                  icon="pi pi-file-pdf"
-                  [outlined]="true"
-                  [routerLink]="['/reports']"
-                  [queryParams]="{ requestId: requestId() }"
-                />
+                @if (reportId()) {
+                  <p-button
+                    styleClass="w-full"
+                    label="Ver informe PDF"
+                    icon="pi pi-file-pdf"
+                    [outlined]="true"
+                    (onClick)="viewPdf()"
+                  />
+                } @else if (isReportLoading()) {
+                  <p-button
+                    styleClass="w-full"
+                    label="Cargando informe..."
+                    icon="pi pi-spin pi-spinner"
+                    [outlined]="true"
+                    [disabled]="true"
+                  />
+                }
               </div>
             </ng-template>
           </p-card>
@@ -147,15 +158,23 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
     }
   `
 })
-export class ScoringComponent implements OnInit {
+export class ScoringComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private scoringService = inject(ScoringService);
+  private reportService = inject(ReportService);
 
   requestId = signal('');
   scoring = signal<Scoring | undefined>(undefined);
+  reportId = signal<string | undefined>(undefined);
+  isReportLoading = signal(false);
+  private pollingSub?: Subscription;
 
   riskSeverity = computed<TagSeverity>(() => (riskGradeColor[this.scoring()?.riskGrade ?? ''] ?? 'info') as TagSeverity);
+
+  ngOnDestroy() {
+    this.pollingSub?.unsubscribe();
+  }
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -165,8 +184,46 @@ export class ScoringComponent implements OnInit {
     }
     this.requestId.set(id);
     this.scoringService.getByRequest(id).subscribe({
-      next: res => this.scoring.set(res),
+      next: res => {
+        this.scoring.set(res);
+        this.checkReport(id);
+      },
       error: () => this.scoring.set(undefined)
+    });
+  }
+
+  checkReport(requestId: string) {
+    this.isReportLoading.set(true);
+
+    // Poll every 3 seconds until the report is generated
+    this.pollingSub = timer(0, 3000).subscribe(() => {
+      this.reportService.list({ requestId }).subscribe({
+        next: reports => {
+          if (reports && reports.length > 0) {
+            this.reportId.set(reports[0].reportId);
+            this.isReportLoading.set(false);
+            this.pollingSub?.unsubscribe();
+          }
+        },
+        error: () => {
+          this.isReportLoading.set(false);
+          this.pollingSub?.unsubscribe();
+        }
+      });
+    });
+  }
+
+  viewPdf() {
+    const id = this.reportId();
+    if (!id) return;
+
+    this.reportService.download(id).subscribe({
+      next: blob => {
+        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+        const url = URL.createObjectURL(pdfBlob);
+        window.open(url, '_blank');
+      },
+      error: () => alert('No se pudo visualizar el informe.')
     });
   }
 

@@ -80,9 +80,9 @@ import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.com
               <td class="text-right">
                 <p-button
                   [outlined]="true"
-                  icon="pi pi-download"
-                  label="Descargar PDF"
-                  (onClick)="downloadPdf(report)"
+                  icon="pi pi-eye"
+                  label="Ver PDF"
+                  (onClick)="viewPdf(report)"
                 />
               </td>
             </tr>
@@ -133,19 +133,14 @@ export class ReportsComponent implements OnInit {
       });
   }
 
-  downloadPdf(report: ReportSummary) {
+  viewPdf(report: ReportSummary) {
     this.reportService.download(report.reportId).subscribe({
       next: blob => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${report.title || report.reportId}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+        const url = URL.createObjectURL(pdfBlob);
+        window.open(url, '_blank');
       },
-      error: () => alert('No se pudo descargar el informe.')
+      error: () => alert('No se pudo visualizar el informe.')
     });
   }
 }
