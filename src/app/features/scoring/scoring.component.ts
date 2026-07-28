@@ -3,17 +3,18 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
-import { ProgressBarModule } from 'primeng/progressbar';
 import { Subscription, timer } from 'rxjs';
 
 import { ScoringService } from '../../core/services/scoring.service';
+import { RequestService } from '../../core/services/request.service';
 import { ReportService } from '../../core/services/report.service';
 import { Scoring } from '../../core/models/scoring.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { MetricCardComponent } from '../../shared/ui/metric-card/metric-card.component';
+import { RiskMetricCardComponent, RiskSeverity } from '../../shared/ui/risk-metric-card/risk-metric-card.component';
+import { ShapDriversChartComponent } from '../../shared/ui/shap-drivers-chart/shap-drivers-chart.component';
 import { CurrencyValuePipe } from '../../shared/ui/currency-value/currency-value.pipe';
 import { riskGradeColor } from '../../core/utils/labels';
 import { TagSeverity } from '../../core/utils/tag-severity';
@@ -27,12 +28,12 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
     RouterLink,
     CardModule,
     ButtonModule,
-    TableModule,
     TagModule,
     DividerModule,
-    ProgressBarModule,
     PageHeaderComponent,
     MetricCardComponent,
+    RiskMetricCardComponent,
+    ShapDriversChartComponent,
     CurrencyValuePipe,
     DetailFieldComponent
   ],
@@ -40,25 +41,63 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
     <app-page-header title="Scoring" [subtitle]="'Solicitud ' + requestId()" />
 
     @if (scoring(); as s) {
+      <!-- Risk Metrics Section — PD, LGD, EAD, ECL with severity colors -->
+      <p-card styleClass="rounded-xl shadow-sm mb-6">
+        <ng-template pTemplate="title">
+          <div class="flex items-center justify-between">
+            <span class="text-surface-900 font-semibold">Métricas de riesgo</span>
+            <p-tag [value]="s.riskGrade" [severity]="riskSeverity()" />
+          </div>
+        </ng-template>
+        <ng-template pTemplate="content">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <app-risk-metric-card
+              label="Prob. Default (PD)"
+              [value]="s.pd * 100"
+              [severity]="gradeSeverity()"
+              suffix="%"
+              icon="pi-chart-line"
+            />
+            <app-risk-metric-card
+              label="Pérdida (LGD)"
+              [value]="s.lgd * 100"
+              [severity]="lgdSeverity()"
+              suffix="%"
+              icon="pi-percentage"
+            />
+            <app-risk-metric-card
+              label="Exposición (EAD)"
+              [value]="s.ead"
+              [severity]="gradeSeverity()"
+              [isCurrency]="true"
+              icon="pi-wallet"
+            />
+            <app-risk-metric-card
+              label="Pérdida esperada (ECL)"
+              [value]="s.ecl"
+              [severity]="gradeSeverity()"
+              [isCurrency]="true"
+              icon="pi-exclamation-triangle"
+            />
+          </div>
+        </ng-template>
+      </p-card>
+
+      <!-- Main content: Drivers + Sidebar -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
+          <!-- SHAP Drivers Chart -->
+          <app-shap-drivers-chart
+            [features]="s.topFeatures"
+            [baseValue]="s.baseValue"
+          />
+
+          <!-- Financial Metrics -->
           <p-card styleClass="rounded-xl shadow-sm">
             <ng-template pTemplate="title">
-              <div class="flex items-center justify-between">
-                <span class="text-surface-900 font-semibold">Resumen del scoring</span>
-                <p-tag [value]="s.riskGrade" [severity]="riskSeverity()" />
-              </div>
+              <span class="text-surface-900 font-semibold">Métricas financieras</span>
             </ng-template>
             <ng-template pTemplate="content">
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                <app-metric-card label="PD (%)" [value]="s.pd * 100" [isCurrency]="false" format="1.2-2" />
-                <app-metric-card label="LGD (%)" [value]="s.lgd * 100" [isCurrency]="false" format="1.2-2" />
-                <app-metric-card label="EAD" [value]="s.ead" [isCurrency]="true" />
-                <app-metric-card label="Pérdida esperada (ECL)" [value]="s.ecl" [isCurrency]="true" />
-              </div>
-
-              <p-divider />
-
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <app-metric-card label="Cuota mensual" [value]="s.monthlyPayment" [isCurrency]="true" />
                 <app-metric-card label="DTI (%)" [value]="s.dti * 100" [isCurrency]="false" format="1.2-2" />
@@ -74,38 +113,9 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
               </div>
             </ng-template>
           </p-card>
-
-          <p-card styleClass="rounded-xl shadow-sm">
-            <ng-template pTemplate="title">
-              <span class="text-surface-900 font-semibold">Principales drivers</span>
-            </ng-template>
-            <ng-template pTemplate="content">
-              <p-table [value]="s.topFeatures" styleClass="p-datatable-sm" [tableStyle]="{'min-width':'30rem'}">
-                <ng-template pTemplate="header">
-                  <tr>
-                    <th>Variable</th>
-                    <th>Valor</th>
-                    <th class="text-right">Impacto</th>
-                  </tr>
-                </ng-template>
-                <ng-template pTemplate="body" let-feature>
-                  <tr>
-                    <td class="font-medium text-surface-900">{{ feature.featureName }}</td>
-                    <td class="text-surface-600">{{ feature.featureValue }}</td>
-                    <td class="text-right">
-                      <p-progressBar
-                        [value]="featureShapPercent(feature)"
-                        [showValue]="true"
-                        styleClass="w-32 ml-auto"
-                      />
-                    </td>
-                  </tr>
-                </ng-template>
-              </p-table>
-            </ng-template>
-          </p-card>
         </div>
 
+        <!-- Sidebar -->
         <div class="space-y-6">
           <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500">
             <ng-template pTemplate="content">
@@ -162,6 +172,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private scoringService = inject(ScoringService);
+  private requestService = inject(RequestService);
   private reportService = inject(ReportService);
 
   requestId = signal('');
@@ -171,6 +182,21 @@ export class ScoringComponent implements OnInit, OnDestroy {
   private pollingSub?: Subscription;
 
   riskSeverity = computed<TagSeverity>(() => (riskGradeColor[this.scoring()?.riskGrade ?? ''] ?? 'info') as TagSeverity);
+
+  lgdSeverity = computed<RiskSeverity>(() => {
+    const lgd = (this.scoring()?.lgd ?? 0) * 100;
+    if (lgd < 30) return 'low';
+    if (lgd < 60) return 'medium';
+    return 'high';
+  });
+
+  // EAD and ECL severity derived from the riskGrade (A-H)
+  gradeSeverity = computed<RiskSeverity>(() => {
+    const grade = this.scoring()?.riskGrade ?? '';
+    if (['A', 'B'].includes(grade)) return 'low';
+    if (['C', 'D', 'E'].includes(grade)) return 'medium';
+    return 'high';
+  });
 
   ngOnDestroy() {
     this.pollingSub?.unsubscribe();
@@ -183,6 +209,12 @@ export class ScoringComponent implements OnInit, OnDestroy {
       return;
     }
     this.requestId.set(id);
+    
+    // Mark as reviewed asynchronously; no need to block the UI
+    this.requestService.markAsReviewed(id).subscribe({
+      error: (err) => console.error('Error marking request as reviewed:', err)
+    });
+
     this.scoringService.getByRequest(id).subscribe({
       next: res => {
         this.scoring.set(res);
@@ -195,19 +227,31 @@ export class ScoringComponent implements OnInit, OnDestroy {
   checkReport(requestId: string) {
     this.isReportLoading.set(true);
 
-    // Poll every 3 seconds until the report is generated
+    let attempts = 0;
+    const maxAttempts = 20; // 60 segundos de timeout (20 * 3s)
+
+    // Poll every 3 seconds until the report is generated or timeout is reached
     this.pollingSub = timer(0, 3000).subscribe(() => {
-      this.reportService.list({ requestId }).subscribe({
-        next: reports => {
-          if (reports && reports.length > 0) {
-            this.reportId.set(reports[0].reportId);
+      attempts++;
+
+      if (attempts > maxAttempts) {
+        this.isReportLoading.set(false);
+        this.pollingSub?.unsubscribe();
+        alert('El informe está tardando demasiado en generarse. Por favor, revíselo más tarde.');
+        return;
+      }
+
+      this.reportService.getByRequestId(requestId).subscribe({
+        next: report => {
+          if (report && report.reportId) {
+            this.reportId.set(report.reportId);
             this.isReportLoading.set(false);
             this.pollingSub?.unsubscribe();
           }
         },
         error: () => {
-          this.isReportLoading.set(false);
-          this.pollingSub?.unsubscribe();
+          // Si devuelve 404, significa que aún no se ha generado, simplemente ignora el error
+          // y el polling seguirá hasta el maxAttempts.
         }
       });
     });
@@ -217,7 +261,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
     const id = this.reportId();
     if (!id) return;
 
-    this.reportService.download(id).subscribe({
+    this.reportService.getFile(id).subscribe({
       next: blob => {
         const pdfBlob = new Blob([blob], { type: 'application/pdf' });
         const url = URL.createObjectURL(pdfBlob);
@@ -225,10 +269,5 @@ export class ScoringComponent implements OnInit, OnDestroy {
       },
       error: () => alert('No se pudo visualizar el informe.')
     });
-  }
-
-  featureShapPercent(feature: { shapValue: number }): number {
-    const max = Math.max(...(this.scoring()?.topFeatures ?? []).map(f => Math.abs(f.shapValue)), 1);
-    return (Math.abs(feature.shapValue) / max) * 100;
   }
 }

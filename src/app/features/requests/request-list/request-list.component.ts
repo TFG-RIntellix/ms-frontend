@@ -16,6 +16,7 @@ import { RequestSummary } from '../../../core/models/request.model';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/ui/status-badge/status-badge.component';
 import { CurrencyValuePipe } from '../../../shared/ui/currency-value/currency-value.pipe';
+import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { RequestTypeLabelPipe } from '../../../shared/pipes/request-type-label.pipe';
 import { statusLabel } from '../../../core/utils/labels';
 
@@ -36,7 +37,8 @@ import { statusLabel } from '../../../core/utils/labels';
     StatusBadgeComponent,
     CurrencyValuePipe,
     RequestTypeLabelPipe,
-    ProgressSpinnerModule
+    ProgressSpinnerModule,
+    SpinnerComponent
   ],
   template: `
     <app-page-header
@@ -70,9 +72,7 @@ import { statusLabel } from '../../../core/utils/labels';
         </div>
 
         @if (!hasLoadedOnce()) {
-          <div class="flex justify-center items-center min-h-[400px]">
-            <div class="rintellix-spinner"></div>
-          </div>
+          <app-spinner height="400px"></app-spinner>
         } @else {
           <p-table
             #dt
@@ -85,7 +85,13 @@ import { statusLabel } from '../../../core/utils/labels';
             [loading]="isLoading()"
             [tableStyle]="{'min-width':'60rem'}"
             styleClass="p-datatable-sm"
+            [rowHover]="true"
+            stateStorage="session"
+            stateKey="request-list-session"
           >
+            <ng-template pTemplate="loadingIcon">
+              <app-spinner [overlay]="false"></app-spinner>
+            </ng-template>
 
             <ng-template pTemplate="header">
               <tr>

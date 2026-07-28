@@ -2,6 +2,7 @@ export interface TopFeature {
   featureName: string;
   featureValue: string;
   shapValue: number;
+  description?: string;
 }
 
 export interface Scoring {

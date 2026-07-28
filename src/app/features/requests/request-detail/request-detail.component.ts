@@ -11,9 +11,10 @@ import { StatusBadgeComponent } from '../../../shared/ui/status-badge/status-bad
 import { CurrencyValuePipe } from '../../../shared/ui/currency-value/currency-value.pipe';
 import { RequestTypeLabelPipe } from '../../../shared/pipes/request-type-label.pipe';
 import { requestTypeLabel } from '../../../core/utils/labels';
-import { LoanFieldsComponent } from '../components/loan-fields.component';
-import { CreditCardFieldsComponent } from '../components/credit-card-fields.component';
-import { MortgageFieldsComponent } from '../components/mortgage-fields.component';
+import { DynamicFormComponent } from '../../../shared/ui/dynamic-form/dynamic-form.component';
+import { DynamicField } from '../../../shared/models/dynamic-form.model';
+import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
+import { employmentStatusOptions } from '../../../core/utils/labels';
 import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
 
 @Component({
@@ -29,16 +30,13 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
     StatusBadgeComponent,
     CurrencyValuePipe,
     RequestTypeLabelPipe,
-    LoanFieldsComponent,
-    CreditCardFieldsComponent,
-    MortgageFieldsComponent,
-    DetailFieldComponent
+    DetailFieldComponent,
+    DynamicFormComponent,
+    SpinnerComponent
   ],
   template: `
     @if (isLoading()) {
-      <div class="flex justify-center items-center h-[calc(100vh-100px)]">
-        <div class="rintellix-spinner"></div>
-      </div>
+      <app-spinner height="calc(100vh - 100px)"></app-spinner>
     } @else {
       @let req = request()!;
       <app-page-header [title]="pageTitle()" [subtitle]="req.requestId" />
@@ -86,17 +84,11 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
               </div>
             </ng-template>
             <ng-template pTemplate="content">
-              @switch (req.requestType) {
-                @case ('TARJETA_CREDITO') {
-                  <app-credit-card-fields [request]="req" />
-                }
-                @case ('HIPOTECA') {
-                  <app-mortgage-fields [request]="req" />
-                }
-                @default {
-                  <app-loan-fields [request]="req" />
-                }
-              }
+              <app-dynamic-form
+                [fields]="fields()"
+                [readonly]="true"
+                [hideSubmit]="true"
+              />
             </ng-template>
           </p-card>
         </div>
@@ -161,6 +153,10 @@ export class RequestDetailComponent implements OnInit {
   request = signal<RequestDetails | undefined>(undefined);
   isLoading = signal(true);
 
+  readonly employmentOptions = employmentStatusOptions;
+
+  fields = computed<DynamicField[]>(() => this.buildFields(this.request()));
+
   pageTitle = computed(() => {
     const req = this.request();
     if (!req) return 'Solicitud';
@@ -188,5 +184,43 @@ export class RequestDetailComponent implements OnInit {
       return req.requestedCreditLimit ?? 0;
     }
     return req.requestedAmount ?? 0;
+  }
+
+  private buildFields(req: RequestDetails | undefined): DynamicField[] {
+    if (!req) return [];
+    
+    const requestType = req.requestType ?? 'PRESTAMO';
+    const common: DynamicField[] = [
+      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: ((req as unknown) as Record<string, unknown>)['partyLaboralSituation'] },
+      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['partyIncome'] }
+    ];
+
+    switch (requestType) {
+      case 'TARJETA_CREDITO':
+        return [
+          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', validators: { min: 0, step: 100 }, value: req.requestedCreditLimit },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
+          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean', value: ((req as unknown) as Record<string, unknown>)['isRevolving'] ?? false },
+          ...common
+        ];
+      case 'HIPOTECA':
+        return [
+          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: req.requestedAmount },
+          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: req.requestTermMonths },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
+          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['propertyValue'] },
+          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean', value: false },
+          ...common
+        ];
+      default:
+        return [
+          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: req.requestedAmount },
+          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: req.requestTermMonths },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
+          { key: 'loanType', label: 'Tipo de préstamo', type: 'text', value: ((req as unknown) as Record<string, unknown>)['loanType'] ?? '-' },
+          { key: 'repaymentSystem', label: 'Sistema amortización', type: 'text', value: ((req as unknown) as Record<string, unknown>)['repaymentSystem'] ?? '-' },
+          ...common
+        ];
+    }
   }
 }

@@ -11,10 +11,13 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { SelectButtonModule } from 'primeng/selectbutton';
 
+import { ConfirmationService, MessageService } from 'primeng/api';
+
 import { SimulationService, SimulationListFilter } from '../../core/services/simulation.service';
 import { SimulationSummary } from '../../core/models/simulation.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.component';
+import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
 
 @Component({
   selector: 'app-simulations',
@@ -30,7 +33,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
     TagModule,
     SelectButtonModule,
     PageHeaderComponent,
-    StatusBadgeComponent
+    StatusBadgeComponent,
+    SpinnerComponent
   ],
   template: `
     <app-page-header
@@ -62,9 +66,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
         </div>
 
         @if(!hasLoadedOnce()) {
-          <div class="flex justify-center items-center min-h-[400px]">
-            <div class="rintellix-spinner"></div>
-          </div>
+          <app-spinner height="400px"></app-spinner>
         } @else {
           <p-table
           [value]="simulations()"
@@ -74,7 +76,14 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
           [loading]="isLoading()"
           [tableStyle]="{'min-width':'50rem'}"
           styleClass="p-datatable-sm"
+          [rowHover]="true"
+          stateStorage="session"
+          stateKey="simulations-list-session"
           >
+
+          <ng-template pTemplate="loadingIcon">
+            <app-spinner [overlay]="false"></app-spinner>
+          </ng-template>
 
           <ng-template pTemplate="header">
             <tr>
@@ -126,6 +135,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.
 })
 export class SimulationsComponent implements OnInit {
   private simulationService = inject(SimulationService);
+  private confirmationService = inject(ConfirmationService);
+  private messageService = inject(MessageService);
   private route = inject(ActivatedRoute);
 
   simulations = signal<SimulationSummary[]>([]);
@@ -189,12 +200,34 @@ export class SimulationsComponent implements OnInit {
   }
 
   deleteSimulation(sim: SimulationSummary) {
-    if (confirm(`Eliminar "${sim.scenarioName}"?`)) {
-      this.simulationService.delete(sim.simulationId).subscribe({
-        next: () => this.reload(),
-        error: () => alert('No se pudo eliminar la simulación.')
-      });
-    }
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de que deseas eliminar permanentemente la simulación "${sim.scenarioName}"?`,
+      header: 'Confirmar borrado',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      rejectButtonStyleClass: 'p-button-text',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.simulationService.delete(sim.simulationId).subscribe({
+          next: () => {
+            this.reload();
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Éxito',
+              detail: 'Simulación eliminada correctamente'
+            });
+          },
+          error: () => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'No se pudo eliminar la simulación'
+            });
+          }
+        });
+      }
+    });
   }
 
   private reload() {

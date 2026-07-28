@@ -1,15 +1,11 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
-import { CardModule } from 'primeng/card';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { DropdownModule } from 'primeng/dropdown';
 import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
 
 import { SimulationService } from '../../../core/services/simulation.service';
 import { RequestService } from '../../../core/services/request.service';
@@ -28,47 +24,34 @@ import { SimulationChartComponent } from '../../../shared/ui/simulation-chart/si
 import { AmortizationChartComponent } from '../../../shared/ui/amortization-chart/amortization-chart.component';
 import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
 
-interface SimField {
-  key: string;
-  label: string;
-  type: 'number' | 'select' | 'boolean' | 'text';
-  options?: { value: string; label: string }[];
-  suffix?: string;
-  prefix?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  sourceKey?: string;
-}
+import { DynamicFormComponent } from '../../../shared/ui/dynamic-form/dynamic-form.component';
+import { DynamicField } from '../../../shared/models/dynamic-form.model';
+import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 
 @Component({
   selector: 'app-simulation-detail',
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
     RouterLink,
-    CardModule,
-    ButtonModule,
-    InputTextModule,
-    InputNumberModule,
-    DropdownModule,
     DividerModule,
     TagModule,
-    PageHeaderComponent,
-    DeltaChipComponent,
-    StatusBadgeComponent,
-    MetricValuePipe,
+    CardModule,
+    ButtonModule,
     RequestTypeLabelPipe,
     SimulationChartComponent,
     AmortizationChartComponent,
-    DetailFieldComponent
+    DetailFieldComponent,
+    DynamicFormComponent,
+    SpinnerComponent,
+    StatusBadgeComponent,
+    DeltaChipComponent,
+    PageHeaderComponent,
+    MetricValuePipe
   ],
   template: `
     @if (isLoading()) {
-      <div class="flex justify-center items-center h-[calc(100vh-100px)]">
-        <div class="rintellix-spinner"></div>
-      </div>
+      <app-spinner height="calc(100vh - 100px)"></app-spinner>
     } @else {
       @let sim = simulation()!;
       @let req = request()!;
@@ -93,63 +76,11 @@ interface SimField {
               </div>
             </ng-template>
             <ng-template pTemplate="content">
-              <form [formGroup]="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                @for (field of fields(); track field.key) {
-                  <div class="flex flex-col gap-1">
-                    <label class="text-sm font-medium text-surface-700">{{ field.label }}</label>
-
-                    @switch (field.type) {
-                      @case ('number') {
-                        <p-inputNumber
-                          [formControlName]="field.key"
-                          [suffix]="field.suffix ?? ''"
-                          [prefix]="field.prefix ?? ''"
-                          [min]="field.min ?? 0"
-                          [max]="field.max"
-                          [step]="field.step"
-                          [minFractionDigits]="0"
-                          [maxFractionDigits]="4"
-                          mode="decimal"
-                          class="w-full"
-                          styleClass="w-full p-disabled"
-                          [readonly]="true"
-                        />
-                      }
-                      @case ('select') {
-                        <p-dropdown
-                          [formControlName]="field.key"
-                          [options]="field.options ?? []"
-                          optionLabel="label"
-                          optionValue="value"
-                          styleClass="w-full p-disabled"
-                          [placeholder]="'Seleccionar ' + field.label.toLowerCase()"
-                          [readonly]="true"
-                        />
-                      }
-                       @case ('boolean') {
-                        <label class="inline-flex items-center gap-2 cursor-not-allowed opacity-75">
-                          <input
-                            type="checkbox"
-                            [formControlName]="field.key"
-                            class="w-5 h-5 rounded border-surface-300 accent-primary-500 p-disabled"
-                            [disabled]="true"
-                          />
-                          <span class="text-sm text-surface-600">Sí</span>
-                        </label>
-                      }
-                      @case ('text') {
-                        <input
-                          pInputText
-                          type="text"
-                          [formControlName]="field.key"
-                          class="w-full p-inputtext p-component p-disabled"
-                          [readonly]="true"
-                        />
-                      }
-                    }
-                  </div>
-                }
-              </form>
+              <app-dynamic-form
+                [fields]="fields()"
+                [readonly]="true"
+                [hideSubmit]="true"
+              />
             </ng-template>
           </p-card>
 
@@ -277,7 +208,6 @@ interface SimField {
 export class SimulationDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private fb = inject(FormBuilder);
   private simulationService = inject(SimulationService);
   private requestService = inject(RequestService);
   private scoringService = inject(ScoringService);
@@ -288,8 +218,7 @@ export class SimulationDetailComponent implements OnInit {
   scoring = signal<Scoring | undefined>(undefined);
   isLoading = signal(true);
 
-  form: FormGroup = this.fb.group({});
-  fields = computed<SimField[]>(() => this.buildFields(this.request()?.requestType ?? 'PRESTAMO'));
+  fields = computed<DynamicField[]>(() => this.buildFields(this.simulation()?.formChanges));
 
   readonly employmentOptions = employmentStatusOptions;
 
@@ -385,13 +314,6 @@ export class SimulationDetailComponent implements OnInit {
   });
 
   constructor() {
-    effect(() => {
-      const sim = this.simulation();
-      const req = this.request();
-      if (sim && req) {
-        this.resetForm(sim.formChanges);
-      }
-    });
   }
 
   ngOnInit() {
@@ -427,53 +349,45 @@ export class SimulationDetailComponent implements OnInit {
     });
   }
 
-  private buildFields(requestType: string): SimField[] {
-    const common: SimField[] = [
-      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions },
-      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', min: 0, step: 1000 }
+  private buildFields(formChanges: Record<string, unknown> | undefined): DynamicField[] {
+    const req = this.request();
+    if (!req) return [];
+    
+    const requestType = req.requestType ?? 'PRESTAMO';
+    const getValue = (key: string, sourceKey?: string) => {
+      const reqVal = ((req as unknown) as Record<string, unknown>)[sourceKey ?? key];
+      return formChanges ? (formChanges[key] ?? formChanges[sourceKey ?? key] ?? reqVal) : reqVal;
+    };
+
+    const common: DynamicField[] = [
+      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: getValue('employmentStatus', 'partyLaboralSituation') },
+      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('annualIncome', 'partyIncome') }
     ];
 
     switch (requestType) {
       case 'TARJETA_CREDITO':
         return [
-          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', min: 0, step: 100 },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
-          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean' },
+          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', validators: { min: 0, step: 100 }, value: getValue('creditLimit', 'requestedCreditLimit') },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: getValue('interestRate') },
+          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean', value: getValue('isRevolving') ?? false },
           ...common
         ];
       case 'HIPOTECA':
         return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', min: 0, step: 1000 },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', min: 1, step: 12 },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
-          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', min: 0, step: 1000 },
-          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean' },
+          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('loanAmount', 'requestedAmount') },
+          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: getValue('termMonths', 'requestTermMonths') },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: getValue('interestRate') },
+          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('propertyValue') },
+          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean', value: getValue('hasMortgage') ?? false },
           ...common
         ];
       default:
         return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', min: 0, step: 1000 },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', min: 1, step: 12 },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', min: 0, max: 100, step: 0.01 },
+          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('loanAmount', 'requestedAmount') },
+          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: getValue('termMonths', 'requestTermMonths') },
+          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: getValue('interestRate') },
           ...common
         ];
     }
-  }
-
-  private resetForm(formChanges: Record<string, unknown>) {
-    this.form = this.fb.group({});
-    const req = this.request();
-    for (const field of this.fields()) {
-      const source = field.sourceKey ?? field.key;
-      const reqVal = req ? ((req as unknown) as Record<string, unknown>)[source] : null;
-      const value = formChanges[field.key] ?? (field.sourceKey ? formChanges[field.sourceKey] : undefined) ?? reqVal;
-
-      const control = this.fb.control({
-        value: value ?? (field.type === 'boolean' ? false : null),
-        disabled: true
-      });
-      this.form.addControl(field.key, control);
-    }
-    this.form.disable();
   }
 }

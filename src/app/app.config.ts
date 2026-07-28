@@ -14,14 +14,19 @@ import { routes } from './app.routes';
 import { RintellixPreset } from './core/theme/rintellix-preset';
 import { keycloakConfig } from './core/auth/keycloak.config';
 
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { globalErrorInterceptor } from './core/interceptors/global-error.interceptor';
+
 export const appConfig: ApplicationConfig = {
   providers: [
+    MessageService,
+    ConfirmationService,
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withPreloading(PreloadAllModules)),
     provideLottieOptions({
       player: () => import('lottie-web'),
     }),
-    provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
+    provideHttpClient(withInterceptors([includeBearerTokenInterceptor, globalErrorInterceptor])),
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [

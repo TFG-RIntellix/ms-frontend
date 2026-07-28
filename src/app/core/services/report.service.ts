@@ -14,9 +14,13 @@ export class ReportService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = inject(API_BASE_URL);
 
-  list(filters: ReportListFilter = {}) {
-    return this.http.get<ReportSummary[]>(`${this.apiUrl}/api/reports`, {
-      params: toHttpParams(filters as Record<string, unknown>)
+  list() {
+    return this.http.get<ReportSummary[]>(`${this.apiUrl}/api/reports`);
+  }
+
+  getByRequestId(requestId: string) {
+    return this.http.get<ReportSummary>(`${this.apiUrl}/api/reports`, {
+      params: { requestId }
     });
   }
 
@@ -24,8 +28,8 @@ export class ReportService {
     return this.http.get<ReportDetails>(`${this.apiUrl}/api/reports/${reportId}`);
   }
 
-  download(reportId: string) {
-    return this.http.get(`${this.apiUrl}/api/reports/${reportId}/download`, {
+  getFile(reportId: string) {
+    return this.http.get(`${this.apiUrl}/api/reports/${reportId}/file`, {
       responseType: 'blob'
     });
   }
