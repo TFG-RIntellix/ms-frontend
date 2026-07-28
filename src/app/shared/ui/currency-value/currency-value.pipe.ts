@@ -1,12 +1,9 @@
 import { Pipe, PipeTransform } from '@angular/core';
-
 @Pipe({
   name: 'currencyValue',
-  standalone: true
 })
 export class CurrencyValuePipe implements PipeTransform {
   private formatters = new Map<string, Intl.NumberFormat>();
-
   transform(value: number | null | undefined, currency = 'EUR'): string {
     if (value === null || value === undefined) {
       return '-';

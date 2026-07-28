@@ -10,7 +10,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
 import { CardModule } from 'primeng/card';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-
 import { RequestService, RequestListFilter } from '../../../core/services/request.service';
 import { RequestSummary } from '../../../core/models/request.model';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
@@ -19,10 +18,8 @@ import { CurrencyValuePipe } from '../../../shared/ui/currency-value/currency-va
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { RequestTypeLabelPipe } from '../../../shared/pipes/request-type-label.pipe';
 import { statusLabel } from '../../../core/utils/labels';
-
 @Component({
   selector: 'app-request-list',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
@@ -45,7 +42,6 @@ import { statusLabel } from '../../../core/utils/labels';
       title="Solicitudes"
       subtitle="Listado de solicitudes de riesgo"
     />
-
     <p-card styleClass="rounded-xl shadow-sm">
       <ng-template pTemplate="content">
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
@@ -59,7 +55,6 @@ import { statusLabel } from '../../../core/utils/labels';
               class="w-full sm:w-80"
             />
           </span>
-
           <p-dropdown
             [options]="statusOptions"
             optionLabel="label"
@@ -70,7 +65,6 @@ import { statusLabel } from '../../../core/utils/labels';
             styleClass="w-full sm:w-56"
           />
         </div>
-
         @if (!hasLoadedOnce()) {
           <app-spinner height="400px"></app-spinner>
         } @else {
@@ -92,7 +86,6 @@ import { statusLabel } from '../../../core/utils/labels';
             <ng-template pTemplate="loadingIcon">
               <app-spinner [overlay]="false"></app-spinner>
             </ng-template>
-
             <ng-template pTemplate="header">
               <tr>
                 <th pSortableColumn="requestId" class="font-semibold">ID <p-sortIcon field="requestId" /></th>
@@ -104,7 +97,6 @@ import { statusLabel } from '../../../core/utils/labels';
                 <th></th>
               </tr>
             </ng-template>
-
             <ng-template pTemplate="body" let-request>
               <tr
                 [routerLink]="['/requests', request.requestId]"
@@ -127,18 +119,13 @@ import { statusLabel } from '../../../core/utils/labels';
 })
 export class RequestListComponent implements OnInit {
   @ViewChild('dt') table!: Table;
-
   private requestService = inject(RequestService);
-
   requests = signal<RequestSummary[]>([]);
   isLoading = signal(false);
   hasLoadedOnce = signal(false);
-
   searchControl = new FormControl('');
   statusControl = new FormControl('');
-
   statusOptions = Object.entries(statusLabel).map(([value, label]) => ({ value, label }));
-
   ngOnInit() {
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(''), debounceTime(300), distinctUntilChanged()),

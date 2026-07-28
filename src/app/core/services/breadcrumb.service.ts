@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Router, NavigationEnd, ActivatedRouteSnapshot, Data } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { BehaviorSubject, filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +16,8 @@ export class BreadcrumbService {
 
   constructor() {
     this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
+      filter(event => event instanceof NavigationEnd),
+      takeUntilDestroyed()
     ).subscribe(() => {
       const root = this.router.routerState.snapshot.root;
       const breadcrumbs: MenuItem[] = [];

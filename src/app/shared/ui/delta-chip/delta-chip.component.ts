@@ -1,9 +1,8 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-delta-chip',
-  standalone: true,
   imports: [CommonModule],
   template: `
     <span
@@ -19,9 +18,7 @@ export class DeltaChipComponent {
   value = input.required<number>();
   isCurrency = input(false);
   invertColor = input(false);
-
   prefix = computed(() => (this.value() > 0 ? '+' : ''));
-
   toneClass = computed(() => {
     const positiveIsGood = !this.invertColor();
     const isPositive = this.value() > 0;
@@ -33,7 +30,6 @@ export class DeltaChipComponent {
     }
     return 'bg-red-100 text-red-800';
   });
-
   iconClass = computed(() => {
     const positiveIsGood = !this.invertColor();
     const isPositive = this.value() > 0;

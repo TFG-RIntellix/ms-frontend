@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, effect, input, output, inject , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -6,10 +6,9 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { DropdownModule } from 'primeng/dropdown';
 import { ButtonModule } from 'primeng/button';
 import { DynamicField } from '../../models/dynamic-form.model';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-dynamic-form',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -20,10 +19,9 @@ import { DynamicField } from '../../models/dynamic-form.model';
   ],
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
-      @for (field of fields; track field.key) {
+      @for (field of fields(); track field.key) {
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium text-surface-700">{{ field.label }}</label>
-
           @switch (field.type) {
             @case ('number') {
               <p-inputNumber
@@ -38,7 +36,7 @@ import { DynamicField } from '../../models/dynamic-form.model';
                 mode="decimal"
                 class="w-full"
                 styleClass="w-full"
-                [class.p-disabled]="readonly || field.readonly"
+                [class.p-disabled]="readonly() || field.readonly"
               />
             }
             @case ('select') {
@@ -49,16 +47,16 @@ import { DynamicField } from '../../models/dynamic-form.model';
                 optionValue="value"
                 styleClass="w-full"
                 [placeholder]="'Seleccionar ' + field.label.toLowerCase()"
-                [class.p-disabled]="readonly || field.readonly"
+                [class.p-disabled]="readonly() || field.readonly"
               />
             }
             @case ('boolean') {
-              <label class="inline-flex items-center gap-2" [class.cursor-pointer]="!readonly && !field.readonly" [class.cursor-not-allowed]="readonly || field.readonly" [class.opacity-75]="readonly || field.readonly">
+              <label class="inline-flex items-center gap-2" [class.cursor-pointer]="!readonly() && !field.readonly" [class.cursor-not-allowed]="readonly() || field.readonly" [class.opacity-75]="readonly() || field.readonly">
                 <input
                   type="checkbox"
                   [formControlName]="field.key"
                   class="w-5 h-5 rounded border-surface-300 accent-primary-500"
-                  [class.p-disabled]="readonly || field.readonly"
+                  [class.p-disabled]="readonly() || field.readonly"
                 />
                 <span class="text-sm text-surface-600">Sí</span>
               </label>
@@ -69,72 +67,64 @@ import { DynamicField } from '../../models/dynamic-form.model';
                 [type]="field.type"
                 [formControlName]="field.key"
                 class="w-full p-inputtext p-component"
-                [class.p-disabled]="readonly || field.readonly"
+                [class.p-disabled]="readonly() || field.readonly"
               />
             }
           }
         </div>
       }
-
-      @if (!hideSubmit) {
+      @if (!hideSubmit()) {
         <div class="flex gap-3 pt-2">
           <p-button
             type="submit"
-            [label]="submitLabel"
+            [label]="submitLabel()"
             icon="pi pi-refresh"
             styleClass="w-full"
-            [disabled]="form.invalid || isSubmitting || form.pristine"
+            [disabled]="form.invalid || isSubmitting() || form.pristine"
           />
         </div>
       }
     </form>
   `
 })
-export class DynamicFormComponent implements OnChanges {
+export class DynamicFormComponent {
   private fb = inject(FormBuilder);
-
-  @Input() fields: DynamicField[] = [];
-  @Input() readonly = false;
-  @Input() hideSubmit = false;
-  @Input() submitLabel = 'Guardar';
-  @Input() isSubmitting = false;
-
-  @Output() formSubmit = new EventEmitter<any>();
-
+  fields = input<DynamicField[]>([]);
+  readonly = input(false);
+  hideSubmit = input(false);
+  submitLabel = input('Guardar');
+  isSubmitting = input(false);
+  formSubmit = output<any>();
   form: FormGroup = this.fb.group({});
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['fields'] || changes['readonly']) {
+  constructor() {
+    effect(() => {
       this.buildForm();
-    }
+    });
   }
-
   private buildForm() {
     const group: any = {};
     
-    this.fields.forEach(field => {
+    this.fields().forEach(field => {
       const validators = [];
       if (field.validators?.required) validators.push(Validators.required);
       if (field.validators?.min !== undefined) validators.push(Validators.min(field.validators.min));
       if (field.validators?.max !== undefined) validators.push(Validators.max(field.validators.max));
       if (field.validators?.email) validators.push(Validators.email);
-
       const control = this.fb.control(
         {
           value: field.value ?? (field.type === 'boolean' ? false : null),
-          disabled: this.readonly || field.readonly
+          disabled: this.readonly() || field.readonly
         },
         validators
       );
       
       group[field.key] = control;
     });
-
     this.form = this.fb.group(group);
   }
-
   onSubmit() {
-    if (this.form.valid && !this.readonly) {
+    if (this.form.valid && !this.readonly()) {
       this.formSubmit.emit(this.form.value);
     }
   }

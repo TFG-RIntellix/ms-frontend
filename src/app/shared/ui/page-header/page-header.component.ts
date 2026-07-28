@@ -1,14 +1,14 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-page-header',
-  standalone: true,
   imports: [],
   template: `
-    <div class="mb-6">
-      <h1 class="text-2xl font-semibold text-surface-900">{{ title() }}</h1>
+    <div class="mb-8">
+      <h1 class="text-3xl font-extrabold text-surface-900 tracking-tight">{{ title() }}</h1>
       @if (subtitle()) {
-        <p class="text-surface-500 mt-1">{{ subtitle() }}</p>
+        <p class="text-surface-500 mt-1.5 text-lg">{{ subtitle() }}</p>
       }
     </div>
   `

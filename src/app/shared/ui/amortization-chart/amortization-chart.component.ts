@@ -1,12 +1,10 @@
-import { Component, Input, computed, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { CardModule } from 'primeng/card';
 import { AmortizationData } from '../simulation-chart/simulation-chart.component';
-
 @Component({
   selector: 'app-amortization-chart',
-  standalone: true,
   imports: [CommonModule, ChartModule, CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -23,22 +21,14 @@ import { AmortizationData } from '../simulation-chart/simulation-chart.component
   `
 })
 export class AmortizationChartComponent {
-  @Input() set amortization(value: { base: AmortizationData, sim: AmortizationData | null } | null) {
-    this._amortization.set(value);
-  }
-
-  private _amortization = signal<{ base: AmortizationData, sim: AmortizationData | null } | null>(null);
-
+  amortization = input<{ base: AmortizationData, sim: AmortizationData | null } | null>(null);
   lineData = computed(() => {
-    const am = this._amortization();
+    const am = this.amortization();
     if (!am) return null;
-
     const baseData = this.calculateAmortizationSeries(am.base);
     const simData = am.sim ? this.calculateAmortizationSeries(am.sim) : { series: [], pointRadii: [], pointColors: [] };
-
     const maxMonths = Math.max(am.base.months, am.sim?.months ?? 0, 12);
     const labels = Array.from({ length: maxMonths + 1 }, (_, i) => `Mes ${i}`);
-
     return {
       labels: labels,
       datasets: [
@@ -69,7 +59,6 @@ export class AmortizationChartComponent {
       ]
     };
   });
-
   private calculateAmortizationSeries(data: AmortizationData): { series: number[], pointRadii: number[], pointColors: string[], breakevenMonth: number | null } {
     let balance = data.principal;
     const series = [balance];
@@ -78,15 +67,12 @@ export class AmortizationChartComponent {
     
     let cumulativeInterest = 0;
     let breakevenMonth: number | null = null;
-
     const rate = data.rate > 0 ? (data.rate / 100 / 12) : 0;
     const minPayment = (balance * rate) + 0.01;
     const payment = Math.max(data.payment, minPayment);
-
     for (let i = 1; i <= data.months; i++) {
       const interestForMonth = balance * rate;
       cumulativeInterest += interestForMonth;
-
       balance = balance * (1 + rate) - payment;
       if (balance <= 0) {
         series.push(0);
@@ -95,7 +81,6 @@ export class AmortizationChartComponent {
         break;
       }
       series.push(balance);
-
       if (breakevenMonth === null && cumulativeInterest >= data.ecl && data.ecl > 0) {
         breakevenMonth = i;
         pointRadii.push(8);
@@ -105,16 +90,13 @@ export class AmortizationChartComponent {
         pointColors.push('rgba(0,0,0,0)');
       }
     }
-
     while (series.length <= data.months) {
       series.push(0);
       pointRadii.push(0);
       pointColors.push('rgba(0,0,0,0)');
     }
-
     return { series, pointRadii, pointColors, breakevenMonth };
   }
-
   lineOptions = {
     plugins: {
       legend: {

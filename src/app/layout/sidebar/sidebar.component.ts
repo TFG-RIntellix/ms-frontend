@@ -1,10 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject , ChangeDetectionStrategy} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import Keycloak from 'keycloak-js';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sidebar',
-  standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
     <aside class="h-screen w-64 bg-surface-900 text-white flex flex-col shadow-lg">
@@ -14,7 +13,6 @@ import Keycloak from 'keycloak-js';
         </div>
         <span class="text-xl font-semibold tracking-tight">RIntellix</span>
       </div>
-
       <nav class="flex-1 px-4 py-4 space-y-1">
         <a
           routerLink="/home"
@@ -49,7 +47,6 @@ import Keycloak from 'keycloak-js';
           <span>Informes</span>
         </a>
       </nav>
-
       <div class="p-4 border-t border-surface-800">
         <button
           type="button"
@@ -88,7 +85,6 @@ import Keycloak from 'keycloak-js';
 })
 export class SidebarComponent {
   private keycloak = inject(Keycloak);
-
   logout() {
     this.keycloak.logout({ redirectUri: window.location.origin + '/login' });
   }

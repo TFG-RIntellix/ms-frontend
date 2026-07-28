@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -13,7 +13,6 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
-
 import { RequestService } from '../../core/services/request.service';
 import { SimulationService } from '../../core/services/simulation.service';
 import { ScoringService } from '../../core/services/scoring.service';
@@ -35,10 +34,9 @@ import { AmortizationChartComponent } from '../../shared/ui/amortization-chart/a
 import { DynamicFormComponent } from '../../shared/ui/dynamic-form/dynamic-form.component';
 import { DynamicField } from '../../shared/models/dynamic-form.model';
 import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-simulate',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -58,7 +56,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
   ],
   template: `
     <app-page-header title="Simular escenario" [subtitle]="'Solicitud ' + requestId()" />
-
     @if (isLoading()) {
       <app-spinner height="calc(100vh - 100px)"></app-spinner>
     } @else {
@@ -80,12 +77,10 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
             />
           </ng-template>
         </p-card>
-
         @if (draft()) {
           <app-amortization-chart [amortization]="amortizationConfig()" />
         }
       </div>
-
       <p-card styleClass="rounded-xl shadow-sm h-fit sticky top-6">
           <ng-template pTemplate="title">
             <span class="text-surface-900 font-semibold">Comparativa con scoring base</span>
@@ -99,7 +94,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
                   <div class="text-center font-medium text-surface-900">Simulado</div>
                   <div class="text-center font-medium text-surface-600">Diferencia</div>
                 </div>
-
                 @for (metric of metricRows(); track metric.label) {
                   <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg">
                     <div class="font-medium text-surface-700 truncate" [title]="metric.label">{{ metric.label }}</div>
@@ -114,16 +108,12 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
                     </div>
                   </div>
                 }
-
                 <app-simulation-chart [metrics]="metricRows()" />
-
                 <p-divider />
-
                 <div class="flex items-center justify-between">
                   <span class="text-surface-500">Nota de riesgo simulada</span>
                   <p-tag [value]="d.simulatedResults.riskGrade" [severity]="simRiskSeverity()" />
                 </div>
-
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-surface-700">Nombre del escenario</label>
                   <input
@@ -134,7 +124,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
                     class="w-full"
                   />
                 </div>
-
                 <p-button
                   label="Guardar escenario"
                   icon="pi pi-save"
@@ -142,7 +131,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
                   [disabled]="isSaving()"
                   (onClick)="persist()"
                 />
-
                 @if (errorMessage()) {
                   <div class="p-3 rounded-lg bg-red-50 text-red-700 text-sm">{{ errorMessage() }}</div>
                 }
@@ -156,7 +144,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
         </p-card>
       </div>
     }
-
   `
 })
 export class SimulateComponent implements OnInit {
@@ -166,7 +153,6 @@ export class SimulateComponent implements OnInit {
   private simulationService = inject(SimulationService);
   private scoringService = inject(ScoringService);
   private messageService = inject(MessageService);
-
   requestId = signal('');
   request = signal<RequestDetails | undefined>(undefined);
   party = signal<RequestParty | undefined>(undefined);
@@ -178,13 +164,9 @@ export class SimulateComponent implements OnInit {
   
   // Guardamos el último submit del formulario para poder construir el amortizationConfig y para persistir
   lastFormValues = signal<any>({});
-
   scenarioNameControl = new FormControl('', Validators.required);
-
   fields = computed<DynamicField[]>(() => this.buildFields(this.request()));
-
   readonly employmentOptions = employmentStatusOptions;
-
   metricRows = computed(() => {
     const s = this.scoring();
     const d = this.draft();
@@ -203,36 +185,30 @@ export class SimulateComponent implements OnInit {
       { label: 'Ingreso disponible', base: s.monthlyDisposableIncome ?? 0, sim: sim.disposableIncome ?? 0, delta: delta.monthlyDisposableIncomeChange ?? 0, isCurrency: true, invert: true }
     ];
   });
-
   amortizationConfig = computed(() => {
     const req = this.request();
     const score = this.scoring();
     const draft = this.draft();
     if (!req || !score) return null;
-
     const basePrincipal = req.requestedAmount ?? req.requestedCreditLimit ?? score.ead;
     const baseRate = req.interestRate ?? 0;
     const baseMonths = req.requestTermMonths ?? 12;
-
     const simForm = this.lastFormValues();
     const simPrincipal = simForm['loanAmount'] ?? simForm['creditLimit'] ?? basePrincipal;
     const simRate = simForm['interestRate'] ?? baseRate;
     const simMonths = simForm['termMonths'] ?? baseMonths;
     const simPayment = draft?.simulatedResults.monthlyPayment ?? 0;
-
     return {
       base: { principal: basePrincipal, rate: baseRate, months: baseMonths, payment: score.monthlyPayment, ecl: score.ecl },
       sim: draft ? { principal: simPrincipal, rate: simRate, months: simMonths, payment: simPayment, ecl: draft.simulatedResults.ecl } : null
     };
   });
-
   simRiskSeverity = computed<TagSeverity>(() => {
     const grade = this.draft()?.simulatedResults.riskGrade ?? '';
     if (['A', 'B', 'C'].includes(grade)) return 'success';
     if (['D', 'E'].includes(grade)) return 'warn';
     return 'danger';
   });
-
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
@@ -240,7 +216,6 @@ export class SimulateComponent implements OnInit {
       return;
     }
     this.requestId.set(id);
-
     forkJoin({
       request: this.requestService.get(id),
       party: this.requestService.getParty(id),
@@ -255,7 +230,6 @@ export class SimulateComponent implements OnInit {
       error: () => this.router.navigate(['/requests', id])
     });
   }
-
   private buildFields(req: RequestDetails | undefined): DynamicField[] {
     if (!req) return [];
     
@@ -264,7 +238,6 @@ export class SimulateComponent implements OnInit {
       { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: ((req as unknown) as Record<string, unknown>)['partyLaboralSituation'] },
       { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['partyIncome'] }
     ];
-
     switch (requestType) {
       case 'TARJETA_CREDITO':
         return [
@@ -291,11 +264,9 @@ export class SimulateComponent implements OnInit {
         ];
     }
   }
-
   recalculate(formValues: any) {
     this.lastFormValues.set(formValues);
     this.errorMessage.set(undefined);
-
     // Validate that at least one field has changed from its initial value
     let hasChanges = false;
     const initialFields = this.fields();
@@ -307,7 +278,6 @@ export class SimulateComponent implements OnInit {
         break;
       }
     }
-
     if (!hasChanges) {
       this.messageService.add({
         severity: 'warn',
@@ -317,14 +287,12 @@ export class SimulateComponent implements OnInit {
       });
       return;
     }
-
     if (this.request()?.requestType === 'HIPOTECA' && formValues['loanAmount'] !== undefined && formValues['propertyValue'] !== undefined) {
       if (formValues['loanAmount'] > formValues['propertyValue']) {
         this.errorMessage.set('El importe del préstamo no puede superar el valor de la propiedad (LTV > 100%).');
         return;
       }
     }
-
     const payload = {
       requestId: this.requestId(),
       requestType: this.request()?.requestType ?? 'PRESTAMO',
@@ -335,15 +303,12 @@ export class SimulateComponent implements OnInit {
       error: err => this.errorMessage.set(err?.message ?? 'Error al calcular la simulación.')
     });
   }
-
   persist() {
     const req = this.request();
     const party = this.party();
     const score = this.scoring();
     const d = this.draft();
-
     if (!req || !party || !score || !d) return;
-
     let name = this.scenarioNameControl.value?.trim();
     if (!name) {
       const now = new Date();
@@ -351,10 +316,8 @@ export class SimulateComponent implements OnInit {
       const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       name = `Simulación ${date} ${time}`;
     }
-
     this.isSaving.set(true);
     this.errorMessage.set(undefined);
-
     const payload: CreateSimulationPayload = {
       scenarioName: name,
       requestId: req.requestId,
@@ -367,7 +330,6 @@ export class SimulateComponent implements OnInit {
       },
       delta: d.delta
     };
-
     this.simulationService.create(payload).subscribe({
       next: () => this.router.navigate(['/simulations']),
       error: err => {
@@ -376,14 +338,12 @@ export class SimulateComponent implements OnInit {
       }
     });
   }
-
   private inferDecision(sim: SimulationMetrics): string {
     const grade = sim.riskGrade;
     if (['A', 'B', 'C', 'D'].includes(grade)) return 'APROBADO';
     if (['E', 'F'].includes(grade)) return 'PENDIENTE_DE_REVISION';
     return 'RECHAZADO';
   }
-
   private formatFormChanges(rawValues: any): any {
     return { ...rawValues };
   }

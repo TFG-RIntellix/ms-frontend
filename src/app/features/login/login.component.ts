@@ -1,12 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject , ChangeDetectionStrategy} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import Keycloak from 'keycloak-js';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-login',
-  standalone: true,
   imports: [CardModule, ButtonModule],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-surface-50 p-4">
@@ -35,7 +34,6 @@ export class LoginComponent {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-
   login() {
     const redirectUri = `${window.location.origin}${this.returnUrl}`;
     this.keycloak.login({ redirectUri });

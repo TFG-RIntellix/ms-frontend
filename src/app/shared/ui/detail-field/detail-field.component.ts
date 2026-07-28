@@ -1,8 +1,7 @@
-import { Component, input } from '@angular/core';
-
+import { Component, input , ChangeDetectionStrategy} from '@angular/core';
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-detail-field',
-  standalone: true,
   template: `
     <div>
       <label class="text-sm text-surface-500">{{ label() }}</label>

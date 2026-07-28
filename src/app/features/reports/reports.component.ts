@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -9,15 +9,13 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-
 import { ReportService, ReportListFilter } from '../../core/services/report.service';
 import { ReportSummary } from '../../core/models/report.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-reports',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -34,7 +32,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
       title="Informes"
       subtitle="Listado de informes de scoring en PDF"
     />
-
     <p-card styleClass="rounded-xl shadow-sm">
       <ng-template pTemplate="content">
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
@@ -49,7 +46,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
             />
           </span>
         </div>
-
         <p-table
           [value]="reports()"
           [paginator]="true"
@@ -65,7 +61,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
           <ng-template pTemplate="loadingIcon">
             <app-spinner [overlay]="false"></app-spinner>
           </ng-template>
-
           <ng-template pTemplate="header">
             <tr>
               <th>Título</th>
@@ -77,7 +72,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
               <th class="text-right">Acciones</th>
             </tr>
           </ng-template>
-
           <ng-template pTemplate="body" let-report>
             <tr>
               <td class="font-medium text-surface-900">{{ report.title }}</td>
@@ -104,18 +98,15 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
 export class ReportsComponent implements OnInit {
   private reportService = inject(ReportService);
   private route = inject(ActivatedRoute);
-
   reports = signal<ReportSummary[]>([]);
   isLoading = signal(false);
   searchControl = new FormControl('');
-
   ngOnInit() {
     const requestId = this.route.snapshot.queryParamMap.get('requestId') || '';
     const scoringId = this.route.snapshot.queryParamMap.get('scoringId') || '';
     if (requestId || scoringId) {
       this.searchControl.setValue(requestId || scoringId, { emitEvent: true });
     }
-
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged())
     ])
@@ -156,7 +147,6 @@ export class ReportsComponent implements OnInit {
         }
       });
   }
-
   viewPdf(report: ReportSummary) {
     this.reportService.getFile(report.reportId).subscribe({
       next: blob => {

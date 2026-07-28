@@ -1,8 +1,7 @@
-import { Component, Input, computed, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { CardModule } from 'primeng/card';
-
 export interface ChartMetricRow {
   label: string;
   base: number;
@@ -12,7 +11,6 @@ export interface ChartMetricRow {
   invert: boolean;
   hidden?: boolean;
 }
-
 export interface AmortizationData {
   principal: number;
   rate: number;
@@ -20,10 +18,8 @@ export interface AmortizationData {
   payment: number;
   ecl: number;
 }
-
 @Component({
   selector: 'app-simulation-chart',
-  standalone: true,
   imports: [CommonModule, ChartModule, CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -36,7 +32,6 @@ export interface AmortizationData {
           <p-chart type="radar" [data]="radarData()" [options]="radarOptions" height="300px" />
         </ng-template>
       </p-card>
-
       <p-card styleClass="rounded-xl shadow-sm h-full border-t-4 border-t-primary-500">
         <ng-template pTemplate="title">
           <span class="text-surface-900 font-semibold text-lg">Magnitudes (Absolutas)</span>
@@ -49,14 +44,9 @@ export interface AmortizationData {
   `
 })
 export class SimulationChartComponent {
-  @Input() set metrics(value: ChartMetricRow[]) {
-    this._metrics.set(value || []);
-  }
-  
-  private _metrics = signal<ChartMetricRow[]>([]);
-
+  metrics = input<ChartMetricRow[]>([]);
   radarData = computed(() => {
-    const data = this._metrics().filter(m => !m.hidden && !m.isCurrency);
+    const data = this.metrics().filter(m => !m.hidden && !m.isCurrency);
     return {
       labels: data.map(m => m.label),
       datasets: [
@@ -83,9 +73,8 @@ export class SimulationChartComponent {
       ]
     };
   });
-
   barData = computed(() => {
-    const data = this._metrics().filter(m => !m.hidden && m.isCurrency);
+    const data = this.metrics().filter(m => !m.hidden && m.isCurrency);
     return {
       labels: data.map(m => m.label),
       datasets: [
@@ -102,7 +91,6 @@ export class SimulationChartComponent {
       ]
     };
   });
-
   radarOptions = {
     plugins: {
       legend: {
@@ -125,7 +113,6 @@ export class SimulationChartComponent {
       }
     }
   };
-
   barOptions = {
     plugins: {
       legend: {

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -10,18 +10,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { SelectButtonModule } from 'primeng/selectbutton';
-
 import { ConfirmationService, MessageService } from 'primeng/api';
-
 import { SimulationService, SimulationListFilter } from '../../core/services/simulation.service';
 import { SimulationSummary } from '../../core/models/simulation.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.component';
 import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-simulations',
-  standalone: true,
   imports: [
     CommonModule,
     RouterLink,
@@ -41,7 +38,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
       title="Simulaciones"
       subtitle="Escenarios guardados por los analistas"
     />
-
     <p-card styleClass="rounded-xl shadow-sm">
       <ng-template pTemplate="content">
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
@@ -55,7 +51,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
               class="w-full"
             />
           </span>
-
           <p-selectButton
             [options]="statusOptions"
             [formControl]="archivedControl"
@@ -64,7 +59,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
             styleClass="w-full sm:w-auto"
           />
         </div>
-
         @if(!hasLoadedOnce()) {
           <app-spinner height="400px"></app-spinner>
         } @else {
@@ -80,11 +74,9 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
           stateStorage="session"
           stateKey="simulations-list-session"
           >
-
           <ng-template pTemplate="loadingIcon">
             <app-spinner [overlay]="false"></app-spinner>
           </ng-template>
-
           <ng-template pTemplate="header">
             <tr>
               <th>Nombre</th>
@@ -95,7 +87,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
               <th class="text-right">Acciones</th>
             </tr>
           </ng-template>
-
           <ng-template pTemplate="body" let-sim>
             <tr [routerLink]="['/simulations', sim.simulationId]" class="cursor-pointer hover:bg-surface-50 transition-colors">
               <td class="font-medium text-surface-900">{{ sim.scenarioName }}</td>
@@ -138,25 +129,20 @@ export class SimulationsComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private route = inject(ActivatedRoute);
-
   simulations = signal<SimulationSummary[]>([]);
   isLoading = signal(false);
   hasLoadedOnce = signal(false);
-
   searchControl = new FormControl('');
   archivedControl = new FormControl<boolean | null>(false);
   refreshTrigger$ = new BehaviorSubject<void>(undefined);
   requestIdQueryParam = '';
-
   statusOptions = [
     { label: 'Activas', value: false },
     { label: 'Archivadas', value: true },
     { label: 'Todas', value: null }
   ];
-
   ngOnInit() {
     this.requestIdQueryParam = this.route.snapshot.queryParamMap.get('requestId') || '';
-
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(''), debounceTime(300), distinctUntilChanged()),
       this.archivedControl.valueChanges.pipe(startWith(this.archivedControl.value), distinctUntilChanged()),
@@ -186,19 +172,16 @@ export class SimulationsComponent implements OnInit {
           this.hasLoadedOnce.set(true);
         }
       });
-
     if (this.requestIdQueryParam) {
       this.searchControl.setValue(this.requestIdQueryParam, { emitEvent: true });
     }
   }
-
   toggleArchive(sim: SimulationSummary) {
     this.simulationService.archive(sim.simulationId, !sim.isArchived).subscribe({
       next: () => this.reload(),
       error: () => alert('No se pudo actualizar el estado.')
     });
   }
-
   deleteSimulation(sim: SimulationSummary) {
     this.confirmationService.confirm({
       message: `¿Estás seguro de que deseas eliminar permanentemente la simulación "${sim.scenarioName}"?`,
@@ -229,7 +212,6 @@ export class SimulationsComponent implements OnInit {
       }
     });
   }
-
   private reload() {
     this.refreshTrigger$.next();
   }

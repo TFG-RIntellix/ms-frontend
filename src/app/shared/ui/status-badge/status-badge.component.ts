@@ -1,10 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input , ChangeDetectionStrategy} from '@angular/core';
 import { TagModule } from 'primeng/tag';
 import { statusLabel, statusSeverity } from '../../../core/utils/labels';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-status-badge',
-  standalone: true,
   imports: [TagModule],
   template: `
     <p-tag [value]="label()" [severity]="severity()" />
@@ -12,7 +11,6 @@ import { statusLabel, statusSeverity } from '../../../core/utils/labels';
 })
 export class StatusBadgeComponent {
   status = input.required<string>();
-
   label = computed(() => statusLabel[this.status()] ?? this.status());
   severity = computed(() => statusSeverity[this.status()] ?? 'info');
 }

@@ -1,11 +1,10 @@
-import { Component } from '@angular/core';
+import { Component , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ButtonModule, ButtonSeverity } from 'primeng/button';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { LottieComponent, AnimationOptions } from 'ngx-lottie';
-
 interface DashboardCard {
   title: string;
   description: string;
@@ -16,17 +15,15 @@ interface DashboardCard {
   buttonSeverity: ButtonSeverity;
   route: string;
 }
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-home',
-  standalone: true,
   imports: [CommonModule, RouterLink, CardModule, ButtonModule, PageHeaderComponent, LottieComponent],
   template: `
     <app-page-header
       title="Inicio"
       subtitle="Bienvenido a RIntellix Dashboard"
     />
-
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
       <!-- Solicitudes Card -->
       @for (card of menuCards; track card.title) {
@@ -55,9 +52,7 @@ interface DashboardCard {
     </div>
     `
 })
-
 export class HomeComponent {
-
   readonly menuCards: DashboardCard[] = [
     {
       title: 'Solicitudes',
@@ -90,5 +85,4 @@ export class HomeComponent {
       route: '/reports'
     }
   ];
-
 }

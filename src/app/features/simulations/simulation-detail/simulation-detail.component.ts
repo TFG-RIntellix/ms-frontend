@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -6,7 +6,6 @@ import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-
 import { SimulationService } from '../../../core/services/simulation.service';
 import { RequestService } from '../../../core/services/request.service';
 import { ScoringService } from '../../../core/services/scoring.service';
@@ -23,14 +22,12 @@ import { TagSeverity } from '../../../core/utils/tag-severity';
 import { SimulationChartComponent } from '../../../shared/ui/simulation-chart/simulation-chart.component';
 import { AmortizationChartComponent } from '../../../shared/ui/amortization-chart/amortization-chart.component';
 import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
-
 import { DynamicFormComponent } from '../../../shared/ui/dynamic-form/dynamic-form.component';
 import { DynamicField } from '../../../shared/models/dynamic-form.model';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-simulation-detail',
-  standalone: true,
   imports: [
     CommonModule,
     RouterLink,
@@ -61,7 +58,6 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
         [title]="sim.scenarioName" 
         [subtitle]="'Simulado el ' + (sim.simulationDate | date:'dd/MM/yyyy HH:mm')" 
       />
-
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
         
         <!-- Panel Izquierdo: Variables y Detalles -->
@@ -83,7 +79,6 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
               />
             </ng-template>
           </p-card>
-
           <!-- Detalles adicionales de la simulación -->
           <p-card styleClass="rounded-xl shadow-sm">
             <ng-template pTemplate="title">
@@ -100,7 +95,6 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
                     ID: {{ sim.partyId }}
                   </div>
                 </app-detail-field>
-
                 <app-detail-field label="Solicitud Origen">
                   <a 
                     [routerLink]="['/requests', sim.requestId]" 
@@ -110,11 +104,9 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
                     {{ sim.requestId }}
                   </a>
                 </app-detail-field>
-
                 <app-detail-field label="Identificador de Simulación">
                   <span class="font-mono text-sm text-surface-600">{{ sim.simulationId }}</span>
                 </app-detail-field>
-
                 <app-detail-field label="Scoring Base de Referencia">
                   <a 
                     [routerLink]="['/requests', sim.requestId, 'scoring']" 
@@ -127,10 +119,8 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
               </div>
             </ng-template>
           </p-card>
-
           <app-amortization-chart [amortization]="amortizationConfig()" />
         </div>
-
         <!-- Panel Derecho: Comparativa y Acciones -->
         <div class="space-y-6 sticky top-6">
           
@@ -146,7 +136,6 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
                   <div class="text-center font-medium text-surface-900">Simulado</div>
                   <div class="text-center font-medium text-surface-600">Diferencia</div>
                 </div>
-
                 @for (metric of metricRows(); track metric.label) {
                   @if (!metric.hidden) {
                     <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg">
@@ -163,23 +152,17 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
                     </div>
                   }
                 }
-
                 <app-simulation-chart [metrics]="metricRows()" />
-
                 <p-divider />
-
                 <div class="flex items-center justify-between">
                   <span class="text-surface-500">Decisión simulada</span>
                   <app-status-badge [status]="sim.simulatedDecision" />
                 </div>
-
                 <div class="flex items-center justify-between mt-2">
                   <span class="text-surface-500">Nota de riesgo simulada</span>
                   <p-tag [value]="sim.simulatedRiskGrade" [severity]="simRiskSeverity()" />
                 </div>
-
                 <p-divider />
-
                 <div class="flex flex-col gap-3">
                   <p-button
                     label="Volver a simular escenario"
@@ -200,7 +183,6 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
           </p-card>
           
         </div>
-
       </div>
     }
   `
@@ -211,25 +193,19 @@ export class SimulationDetailComponent implements OnInit {
   private simulationService = inject(SimulationService);
   private requestService = inject(RequestService);
   private scoringService = inject(ScoringService);
-
   simulation = signal<SimulationDetails | undefined>(undefined);
   request = signal<RequestDetails | undefined>(undefined);
   party = signal<RequestParty | undefined>(undefined);
   scoring = signal<Scoring | undefined>(undefined);
   isLoading = signal(true);
-
   fields = computed<DynamicField[]>(() => this.buildFields(this.simulation()?.formChanges));
-
   readonly employmentOptions = employmentStatusOptions;
-
   metricRows = computed(() => {
     const sim = this.simulation();
     const s = this.scoring();
     if (!sim || !s) return [];
-
     const simResults = sim.simulatedResults;
     const delta = sim.delta;
-
     return [
       { label: 'PD (%)', base: s.pd * 100, sim: (sim.simulatedPd ?? 0) * 100, delta: sim.pdChange ?? 0, isCurrency: false, invert: false, format: '1.2-2' },
       { label: 'LGD (%)', base: s.lgd * 100, sim: (sim.simulatedLgd ?? 0) * 100, delta: ((sim.simulatedLgd ?? 0) - s.lgd) * 100, isCurrency: false, invert: false, format: '1.2-2' },
@@ -283,50 +259,41 @@ export class SimulationDetailComponent implements OnInit {
       }
     ];
   });
-
   amortizationConfig = computed(() => {
     const req = this.request();
     const score = this.scoring();
     const sim = this.simulation();
     if (!req || !score || !sim) return null;
-
     const basePrincipal = req.requestedAmount ?? req.requestedCreditLimit ?? score.ead;
     const baseRate = req.interestRate ?? 0;
     const baseMonths = req.requestTermMonths ?? 12;
-
     const simForm = sim.formChanges;
     const simPrincipal = (simForm['loanAmount'] as number) ?? (simForm['creditLimit'] as number) ?? basePrincipal;
     const simRate = (simForm['interestRate'] as number) ?? baseRate;
     const simMonths = (simForm['termMonths'] as number) ?? baseMonths;
     const simPayment = sim.simulatedResults?.monthlyPayment ?? 0;
-
     return {
       base: { principal: basePrincipal, rate: baseRate, months: baseMonths, payment: score.monthlyPayment, ecl: score.ecl },
       sim: sim.simulatedResults ? { principal: simPrincipal, rate: simRate, months: simMonths, payment: simPayment, ecl: sim.simulatedResults.ecl } : null
     };
   });
-
   simRiskSeverity = computed<TagSeverity>(() => {
     const grade = this.simulation()?.simulatedRiskGrade ?? '';
     if (['A', 'B', 'C'].includes(grade)) return 'success';
     if (['D', 'E'].includes(grade)) return 'warn';
     return 'danger';
   });
-
   constructor() {
   }
-
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.router.navigate(['/simulations']);
       return;
     }
-
     this.simulationService.get(id).subscribe({
       next: sim => {
         this.simulation.set(sim);
-
         // Cargar concurrentemente los datos de la solicitud, cliente y scoring
         forkJoin({
           request: this.requestService.get(sim.requestId),
@@ -348,7 +315,6 @@ export class SimulationDetailComponent implements OnInit {
       error: () => this.router.navigate(['/simulations'])
     });
   }
-
   private buildFields(formChanges: Record<string, unknown> | undefined): DynamicField[] {
     const req = this.request();
     if (!req) return [];
@@ -358,12 +324,10 @@ export class SimulationDetailComponent implements OnInit {
       const reqVal = ((req as unknown) as Record<string, unknown>)[sourceKey ?? key];
       return formChanges ? (formChanges[key] ?? formChanges[sourceKey ?? key] ?? reqVal) : reqVal;
     };
-
     const common: DynamicField[] = [
       { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: getValue('employmentStatus', 'partyLaboralSituation') },
       { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('annualIncome', 'partyIncome') }
     ];
-
     switch (requestType) {
       case 'TARJETA_CREDITO':
         return [

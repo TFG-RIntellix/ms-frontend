@@ -1,11 +1,10 @@
-import { Component } from '@angular/core';
+import { Component , ChangeDetectionStrategy} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { BreadcrumbComponent } from '../breadcrumb/breadcrumb.component';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-main-layout',
-  standalone: true,
   imports: [RouterOutlet, SidebarComponent, BreadcrumbComponent],
   template: `
     <div class="h-screen flex bg-surface-50 overflow-hidden">

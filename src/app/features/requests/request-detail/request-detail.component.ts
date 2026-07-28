@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -16,10 +16,9 @@ import { DynamicField } from '../../../shared/models/dynamic-form.model';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { employmentStatusOptions } from '../../../core/utils/labels';
 import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
-
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-request-detail',
-  standalone: true,
   imports: [
     CommonModule,
     RouterLink,
@@ -40,7 +39,6 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
     } @else {
       @let req = request()!;
       <app-page-header [title]="pageTitle()" [subtitle]="req.requestId" />
-
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
           <p-card styleClass="rounded-xl shadow-sm">
@@ -60,7 +58,6 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
               </div>
             </ng-template>
           </p-card>
-
           <p-card styleClass="rounded-xl shadow-sm">
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
@@ -75,7 +72,6 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
               </div>
             </ng-template>
           </p-card>
-
           <p-card styleClass="rounded-xl shadow-sm">
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
@@ -92,16 +88,13 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
             </ng-template>
           </p-card>
         </div>
-
         <div class="space-y-6">
           <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500">
             <ng-template pTemplate="content">
               <app-detail-field label="Importe principal">
                 <span class="text-3xl font-bold text-surface-900">{{ mainAmount(req) | currencyValue:req.currency }}</span>
               </app-detail-field>
-
               <p-divider />
-
               <div class="space-y-3 text-sm">
                 <div class="flex justify-between">
                   <span class="text-surface-500">Estado</span>
@@ -120,9 +113,7 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
                   <span class="font-medium">{{ req.lastReviewDate | date:'dd/MM/yyyy' }}</span>
                 </div>
               </div>
-
               <p-divider />
-
               <div class="grid grid-cols-1 gap-2">
                 <p-button
                   styleClass="w-full"
@@ -149,27 +140,21 @@ export class RequestDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private requestService = inject(RequestService);
-
   request = signal<RequestDetails | undefined>(undefined);
   isLoading = signal(true);
-
   readonly employmentOptions = employmentStatusOptions;
-
   fields = computed<DynamicField[]>(() => this.buildFields(this.request()));
-
   pageTitle = computed(() => {
     const req = this.request();
     if (!req) return 'Solicitud';
     return `${requestTypeLabel[req.requestType] ?? req.requestType} de ${req.partyName}`;
   });
-
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.router.navigate(['/requests']);
       return;
     }
-
     this.requestService.get(id).subscribe({
       next: req => {
         this.request.set(req);
@@ -178,14 +163,12 @@ export class RequestDetailComponent implements OnInit {
       error: () => this.router.navigate(['/requests'])
     });
   }
-
   mainAmount(req: RequestDetails): number {
     if (req.requestType === 'TARJETA_CREDITO') {
       return req.requestedCreditLimit ?? 0;
     }
     return req.requestedAmount ?? 0;
   }
-
   private buildFields(req: RequestDetails | undefined): DynamicField[] {
     if (!req) return [];
     
@@ -194,7 +177,6 @@ export class RequestDetailComponent implements OnInit {
       { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: ((req as unknown) as Record<string, unknown>)['partyLaboralSituation'] },
       { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['partyIncome'] }
     ];
-
     switch (requestType) {
       case 'TARJETA_CREDITO':
         return [

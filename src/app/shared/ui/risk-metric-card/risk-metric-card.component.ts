@@ -1,31 +1,42 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CurrencyValuePipe } from '../currency-value/currency-value.pipe';
 
 export type RiskSeverity = 'low' | 'medium' | 'high';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-risk-metric-card',
-  standalone: true,
   imports: [CommonModule, CurrencyValuePipe],
   template: `
     <div
-      class="rounded-xl p-4 border-l-4 transition-all duration-200 hover:shadow-md"
-      [style.background-color]="colors().bg"
-      [style.border-left-color]="colors().border"
+      class="relative overflow-hidden rounded-xl p-5 border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md bg-white"
+      [style.border-color]="colors().border"
+      [style.border-left-width]="'4px'"
+      [style.border-left-color]="colors().accent"
     >
-      <div class="flex items-center gap-2 mb-1">
-        <i class="pi text-sm" [class]="icon()" [style.color]="colors().border"></i>
-        <span class="text-sm font-medium text-surface-600">{{ label() }}</span>
+      <!-- Background icon watermark -->
+      <div class="absolute -right-3 -bottom-4 opacity-10 transform rotate-12 transition-transform duration-300 group-hover:rotate-0">
+        <i class="pi text-7xl" [class]="icon()" [style.color]="colors().text"></i>
       </div>
-      <div class="text-2xl font-bold" [style.color]="colors().text">
+
+      <div class="relative z-10 flex items-center gap-2 mb-2">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg shadow-sm" [style.background-color]="colors().bgGradient" [style.color]="colors().text">
+          <i class="pi text-sm" [class]="icon()"></i>
+        </div>
+        <span class="text-sm font-semibold uppercase tracking-wider text-surface-600">{{ label() }}</span>
+      </div>
+      <div class="relative z-10 text-3xl font-bold tracking-tight text-surface-900">
         @if (isCurrency()) {
           {{ value() | currencyValue }}
         } @else {
           {{ value() | number:format() }}{{ suffix() }}
         }
       </div>
-      <div class="text-xs mt-1 font-medium" [style.color]="colors().border">
+      <div class="relative z-10 text-xs mt-2 font-medium inline-block px-2 py-1 rounded border" 
+           [style.color]="colors().text" 
+           [style.background-color]="colors().bgGradient"
+           [style.border-color]="colors().border">
         {{ severityLabel() }}
       </div>
     </div>
@@ -44,21 +55,24 @@ export class RiskMetricCardComponent {
     switch (this.severity()) {
       case 'low':
         return {
-          bg: 'hsl(142, 52%, 92%)',
-          border: 'hsl(142, 45%, 48%)',
-          text: 'hsl(142, 45%, 30%)'
+          bgGradient: '#f0fdf4', // Tailwind green-50
+          border: '#bbf7d0',     // Tailwind green-200
+          accent: '#22c55e',     // Tailwind green-500
+          text: '#166534'
         };
       case 'medium':
         return {
-          bg: 'hsl(45, 80%, 92%)',
-          border: 'hsl(45, 70%, 48%)',
-          text: 'hsl(45, 70%, 30%)'
+          bgGradient: '#fefce8', // Tailwind yellow-50
+          border: '#fef08a',     // Tailwind yellow-200
+          accent: '#eab308',     // Tailwind yellow-500
+          text: '#854d0e'
         };
       case 'high':
         return {
-          bg: 'hsl(0, 70%, 94%)',
-          border: 'hsl(0, 60%, 55%)',
-          text: 'hsl(0, 60%, 35%)'
+          bgGradient: '#fef2f2', // Tailwind red-50
+          border: '#fecaca',     // Tailwind red-200
+          accent: '#ef4444',     // Tailwind red-500
+          text: '#991b1b'
         };
     }
   });
