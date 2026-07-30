@@ -2,6 +2,7 @@ export interface SimulationSummary {
   simulationId: string;
   scenarioName: string;
   partyName: string;
+  requestCode?: string;
   requestId: string;
   simulationDate: string;
   isArchived: boolean;
@@ -36,6 +37,7 @@ export interface SimulationDetails {
   simulationId: string;
   scenarioName: string;
   simulationDate: string;
+  requestCode?: string;
   requestId: string;
   partyId: string;
   baseScoringId: string;

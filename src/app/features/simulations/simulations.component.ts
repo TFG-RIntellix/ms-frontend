@@ -91,7 +91,7 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
             <tr [routerLink]="['/simulations', sim.simulationId]" class="cursor-pointer hover:bg-surface-50 transition-colors">
               <td class="font-medium text-surface-900">{{ sim.scenarioName }}</td>
               <td>{{ sim.partyName }}</td>
-              <td class="font-mono text-surface-600">{{ sim.requestId }}</td>
+              <td class="font-mono text-surface-600">{{ sim.requestCode || sim.requestId }}</td>
               <td class="text-surface-500 text-sm">{{ sim.simulationDate | date:'dd/MM/yyyy' }}</td>
               <td>
                 <!-- TODO: Eliminar la logica de aprobado/rechazado al menos así -->

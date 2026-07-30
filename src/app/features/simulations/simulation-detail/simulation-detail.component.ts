@@ -90,9 +90,8 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
                   <div class="font-medium text-surface-900">{{ client.partyName }}</div>
                   <div class="text-xs text-surface-400">
                     @if (req.partyNIF) {
-                      NIF: {{ req.partyNIF }} |
+                      NIF: {{ req.partyNIF }}
                     }
-                    ID: {{ sim.partyId }}
                   </div>
                 </app-detail-field>
                 <app-detail-field label="Solicitud Origen">

@@ -75,7 +75,7 @@ import { statusLabel } from '../../../core/utils/labels';
             [paginator]="true"
             [rows]="10"
             [rowsPerPageOptions]="[10, 25, 50]"
-            [globalFilterFields]="['partyName', 'requestId', 'requestType']"
+            [globalFilterFields]="['partyName', 'requestId', 'requestCode', 'requestType']"
             [loading]="isLoading()"
             [tableStyle]="{'min-width':'60rem'}"
             styleClass="p-datatable-sm"
@@ -88,7 +88,7 @@ import { statusLabel } from '../../../core/utils/labels';
             </ng-template>
             <ng-template pTemplate="header">
               <tr>
-                <th pSortableColumn="requestId" class="font-semibold">ID <p-sortIcon field="requestId" /></th>
+                <th pSortableColumn="requestCode" class="font-semibold">ID <p-sortIcon field="requestCode" /></th>
                 <th pSortableColumn="partyName" class="font-semibold">Cliente <p-sortIcon field="partyName" /></th>
                 <th class="font-semibold">Producto</th>
                 <th pSortableColumn="amount" class="font-semibold text-right">Importe <p-sortIcon field="amount" /></th>
@@ -102,7 +102,7 @@ import { statusLabel } from '../../../core/utils/labels';
                 [routerLink]="['/requests', request.requestId]"
                 class="cursor-pointer hover:bg-surface-100 transition"
               >
-                <td class="font-mono text-surface-600">{{ request.requestId }}</td>
+                <td class="font-mono text-surface-600">{{ request.requestCode || request.requestId }}</td>
                 <td class="font-medium text-surface-900">{{ request.partyName }}</td>
                 <td>{{ request.requestType | requestTypeLabel }}</td>
                 <td class="text-right font-mono">{{ request.amount | currencyValue:request.currency }}</td>

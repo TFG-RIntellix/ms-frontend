@@ -1,5 +1,6 @@
 export interface RequestSummary {
   requestId: string;
+  requestCode?: string;
   partyName: string;
   status: string;
   requestType: string;
