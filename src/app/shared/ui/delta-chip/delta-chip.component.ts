@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
       [class]="toneClass()"
     >
       <i class="pi" [class]="iconClass()"></i>
-      {{ prefix() }}{{ value() | number:'1.2-2' }}
+      {{ prefix() }}{{ value() | number: (isCurrency() ? '1.0-0' : '1.2-2') }}
     </span>
   `
 })
@@ -31,14 +31,9 @@ export class DeltaChipComponent {
     return 'bg-red-100 text-red-800';
   });
   iconClass = computed(() => {
-    const positiveIsGood = !this.invertColor();
-    const isPositive = this.value() > 0;
-    if (positiveIsGood === isPositive) {
-      return 'pi-arrow-up';
-    }
     if (this.value() === 0) {
       return 'pi-minus';
     }
-    return 'pi-arrow-down';
+    return this.value() > 0 ? 'pi-arrow-up' : 'pi-arrow-down';
   });
 }

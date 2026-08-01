@@ -41,7 +41,7 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
       <app-page-header [title]="pageTitle()" [subtitle]="req.requestId" />
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-          <p-card styleClass="rounded-xl shadow-sm">
+          <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
                 <i class="pi pi-user"></i>
@@ -58,7 +58,7 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
               </div>
             </ng-template>
           </p-card>
-          <p-card styleClass="rounded-xl shadow-sm">
+          <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
                 <i class="pi pi-briefcase"></i>
@@ -72,7 +72,7 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
               </div>
             </ng-template>
           </p-card>
-          <p-card styleClass="rounded-xl shadow-sm">
+          <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="title">
               <div class="flex items-center gap-2 text-surface-900">
                 <i class="pi pi-file"></i>
@@ -89,7 +89,7 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
           </p-card>
         </div>
         <div class="space-y-6">
-          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500">
+          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="content">
               <app-detail-field label="Importe principal">
                 <span class="text-3xl font-bold text-surface-900">{{ mainAmount(req) | currencyValue:req.currency }}</span>

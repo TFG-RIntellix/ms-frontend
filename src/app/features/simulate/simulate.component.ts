@@ -62,7 +62,7 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
       @let req = request()!;
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="space-y-6">
-          <p-card styleClass="rounded-xl shadow-sm">
+          <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
           <ng-template pTemplate="title">
             <div class="flex items-center justify-between text-surface-900 font-semibold">
               <span>Variables a modificar</span>
@@ -81,7 +81,7 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
           <app-amortization-chart [amortization]="amortizationConfig()" />
         }
       </div>
-      <p-card styleClass="rounded-xl shadow-sm h-fit sticky top-6">
+      <p-card styleClass="rounded-xl shadow-sm h-fit sticky top-6 border-t-4 border-t-primary-500 transition-all duration-300 hover:shadow-md">
           <ng-template pTemplate="title">
             <span class="text-surface-900 font-semibold">Comparativa con scoring base</span>
           </ng-template>
@@ -95,8 +95,8 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
                   <div class="text-center font-medium text-surface-600">Diferencia</div>
                 </div>
                 @for (metric of metricRows(); track metric.label) {
-                  <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg">
-                    <div class="font-medium text-surface-700 truncate" [title]="metric.label">{{ metric.label }}</div>
+                  <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg group transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm hover:bg-white border border-transparent hover:border-surface-200">
+                    <div class="font-medium text-surface-700 truncate group-hover:text-primary-600 transition-colors" [title]="metric.label">{{ metric.label }}</div>
                     <div class="text-right font-mono text-surface-700">{{ metric.base | metricValue:metric }}</div>
                     <div class="text-right font-mono font-semibold text-surface-900">{{ metric.sim | metricValue:metric }}</div>
                     <div class="flex justify-end">
@@ -174,15 +174,15 @@ export class SimulateComponent implements OnInit {
     const sim = d.simulatedResults;
     const delta = d.delta;
     return [
-      { label: 'PD (%)', base: (s.pd ?? 0) * 100, sim: (sim.pd ?? 0) * 100, delta: delta.pdChange ?? 0, isCurrency: false, invert: false, format: '1.2-2' },
-      { label: 'LGD (%)', base: (s.lgd ?? 0) * 100, sim: (sim.lgd ?? 0) * 100, delta: ((sim.lgd ?? 0) - (s.lgd ?? 0)) * 100, isCurrency: false, invert: false, format: '1.2-2' },
-      { label: 'EAD', base: s.ead ?? 0, sim: sim.ead ?? 0, delta: (sim.ead ?? 0) - (s.ead ?? 0), isCurrency: true, invert: false },
-      { label: 'ECL', base: s.ecl ?? 0, sim: sim.ecl ?? 0, delta: delta.eclChange ?? 0, isCurrency: true, invert: false },
-      { label: 'Cuota mensual', base: s.monthlyPayment ?? 0, sim: sim.monthlyPayment ?? 0, delta: delta.monthlyPaymentChange ?? 0, isCurrency: true, invert: false },
-      { label: 'DTI (%)', base: (s.dti ?? 0) * 100, sim: (sim.dti ?? 0) * 100, delta: delta.dtiChange ?? 0, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'Pago total', base: s.totalPayment ?? 0, sim: sim.totalPayment ?? 0, delta: delta.totalPaymentChange ?? 0, isCurrency: true, invert: false },
-      { label: 'Intereses totales', base: s.totalInterest ?? 0, sim: sim.totalInterest ?? 0, delta: delta.totalInterestChange ?? 0, isCurrency: true, invert: false },
-      { label: 'Ingreso disponible', base: s.monthlyDisposableIncome ?? 0, sim: sim.disposableIncome ?? 0, delta: delta.monthlyDisposableIncomeChange ?? 0, isCurrency: true, invert: true }
+      { label: 'PD (%)', base: (s.pd ?? 0) * 100, sim: (sim.pd ?? 0) * 100, delta: (delta.pdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
+      { label: 'LGD (%)', base: (s.lgd ?? 0) * 100, sim: (sim.lgd ?? 0) * 100, delta: (delta.lgdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
+      { label: 'EAD', base: s.ead ?? 0, sim: sim.ead ?? 0, delta: delta.eadChange ?? 0, isCurrency: true, invert: true },
+      { label: 'ECL', base: s.ecl ?? 0, sim: sim.ecl ?? 0, delta: delta.eclChange ?? 0, isCurrency: true, invert: true },
+      { label: 'Cuota mensual', base: s.monthlyPayment ?? 0, sim: sim.monthlyPayment ?? 0, delta: delta.monthlyPaymentChange ?? 0, isCurrency: true, invert: true },
+      { label: 'DTI (%)', base: (s.dti ?? 0) * 100, sim: (sim.dti ?? 0) * 100, delta: (delta.dtiChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
+      { label: 'Pago total', base: s.totalPayment ?? 0, sim: sim.totalPayment ?? 0, delta: delta.totalPaymentChange ?? 0, isCurrency: true, invert: true },
+      { label: 'Intereses totales', base: s.totalInterest ?? 0, sim: sim.totalInterest ?? 0, delta: delta.totalInterestChange ?? 0, isCurrency: true, invert: true },
+      { label: 'Ingreso disponible', base: s.monthlyDisposableIncome ?? 0, sim: sim.disposableIncome ?? 0, delta: delta.monthlyDisposableIncomeChange ?? 0, isCurrency: true, invert: false }
     ];
   });
   amortizationConfig = computed(() => {

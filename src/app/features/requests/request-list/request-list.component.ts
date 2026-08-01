@@ -1,9 +1,9 @@
 import { Component, ChangeDetectionStrategy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, startWith, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, startWith, skip } from 'rxjs/operators';
 import { Table, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -45,16 +45,16 @@ import { statusLabel } from '../../../core/utils/labels';
     <p-card styleClass="rounded-xl shadow-sm">
       <ng-template pTemplate="content">
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
-          <span class="p-input-icon-left w-full sm:w-auto">
-            <i class="pi pi-search"></i>
+          <div class="relative w-full sm:w-auto">
+            <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 z-10"></i>
             <input
               pInputText
               type="text"
               [formControl]="searchControl"
               placeholder="Buscar cliente o ID"
-              class="w-full sm:w-80"
+              class="w-full sm:w-80 !pl-10"
             />
-          </span>
+          </div>
           <p-dropdown
             [options]="statusOptions"
             optionLabel="label"
@@ -73,34 +73,41 @@ import { statusLabel } from '../../../core/utils/labels';
             [value]="requests()"
             dataKey="requestId"
             [paginator]="true"
-            [rows]="10"
+            [first]="firstOffset()"
+            [rows]="pageSize()"
+            [totalRecords]="totalRecords()"
+            [lazy]="true"
+            (onLazyLoad)="loadRequests($event)"
             [rowsPerPageOptions]="[10, 25, 50]"
-            [globalFilterFields]="['partyName', 'requestId', 'requestCode', 'requestType']"
             [loading]="isLoading()"
             [tableStyle]="{'min-width':'60rem'}"
             styleClass="p-datatable-sm"
             [rowHover]="true"
-            stateStorage="session"
-            stateKey="request-list-session"
           >
             <ng-template pTemplate="loadingIcon">
               <app-spinner [overlay]="false"></app-spinner>
             </ng-template>
             <ng-template pTemplate="header">
               <tr>
-                <th pSortableColumn="requestCode" class="font-semibold">ID <p-sortIcon field="requestCode" /></th>
-                <th pSortableColumn="partyName" class="font-semibold">Cliente <p-sortIcon field="partyName" /></th>
+                <th pSortableColumn="requestCode" class="font-semibold">ID 
+                  <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-alpha-down text-primary-500': dt.sortField === 'requestCode' && dt.sortOrder === 1, 'pi-sort-alpha-up text-primary-500': dt.sortField === 'requestCode' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'requestCode'}"></i>
+                </th>
+                <th class="font-semibold">Cliente</th>
                 <th class="font-semibold">Producto</th>
-                <th pSortableColumn="amount" class="font-semibold text-right">Importe <p-sortIcon field="amount" /></th>
+                <th pSortableColumn="requestedAmount" class="font-semibold text-right">Importe 
+                  <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-numeric-down text-primary-500': dt.sortField === 'requestedAmount' && dt.sortOrder === 1, 'pi-sort-numeric-up text-primary-500': dt.sortField === 'requestedAmount' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'requestedAmount'}"></i>
+                </th>
                 <th class="font-semibold">Estado</th>
-                <th pSortableColumn="creationDate" class="font-semibold">Creada <p-sortIcon field="creationDate" /></th>
+                <th pSortableColumn="requestDate" class="font-semibold">Creada 
+                  <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-numeric-down text-primary-500': dt.sortField === 'requestDate' && dt.sortOrder === 1, 'pi-sort-numeric-up text-primary-500': dt.sortField === 'requestDate' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'requestDate'}"></i>
+                </th>
                 <th></th>
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-request>
               <tr
                 [routerLink]="['/requests', request.requestId]"
-                class="cursor-pointer hover:bg-surface-100 transition"
+                class="cursor-pointer group hover:bg-white hover:shadow-sm transition-all duration-300"
               >
                 <td class="font-mono text-surface-600">{{ request.requestCode || request.requestId }}</td>
                 <td class="font-medium text-surface-900">{{ request.partyName }}</td>
@@ -108,50 +115,99 @@ import { statusLabel } from '../../../core/utils/labels';
                 <td class="text-right font-mono">{{ request.amount | currencyValue:request.currency }}</td>
                 <td><app-status-badge [status]="request.status" /></td>
                 <td class="text-surface-500 text-sm">{{ request.creationDate | date:'dd/MM/yyyy' }}</td>
-                <td><i class="pi pi-chevron-right text-surface-400"></i></td>
+                <td><i class="pi pi-chevron-right text-surface-400 group-hover:text-primary-600 transition-colors"></i></td>
               </tr>
             </ng-template>
           </p-table>
         }
       </ng-template>
-    </p-card>
   `
 })
 export class RequestListComponent implements OnInit {
   @ViewChild('dt') table!: Table;
   private requestService = inject(RequestService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
   requests = signal<RequestSummary[]>([]);
+  totalRecords = signal<number>(0);
+  pageSize = signal<number>(10);
+  firstOffset = signal<number>(0);
   isLoading = signal(false);
   hasLoadedOnce = signal(false);
   searchControl = new FormControl('');
   statusControl = new FormControl('');
-  statusOptions = Object.entries(statusLabel).map(([value, label]) => ({ value, label }));
+  statusOptions = [{ value: '', label: 'Todos los estados' }, ...Object.entries(statusLabel).map(([value, label]) => ({ value, label }))];
+  private initialLoadDone = false;
+
   ngOnInit() {
+    const firstStr = this.route.snapshot.queryParamMap.get('first');
+    if (firstStr) this.firstOffset.set(parseInt(firstStr, 10));
+    const rowsStr = this.route.snapshot.queryParamMap.get('rows');
+    if (rowsStr) this.pageSize.set(parseInt(rowsStr, 10));
+    
+    const search = this.route.snapshot.queryParamMap.get('search') || '';
+    if (search) this.searchControl.setValue(search, { emitEvent: false });
+    const status = this.route.snapshot.queryParamMap.get('status') || '';
+    if (status) this.statusControl.setValue(status, { emitEvent: false });
+
     combineLatest([
-      this.searchControl.valueChanges.pipe(startWith(''), debounceTime(300), distinctUntilChanged()),
-      this.statusControl.valueChanges.pipe(startWith(''), distinctUntilChanged())
-    ])
-      .pipe(
-        switchMap(([search, status]) => {
-          this.isLoading.set(true);
-          const filters: RequestListFilter = {};
-          if (search) filters.search = search;
-          if (status) filters.requestStatus = status;
-          return this.requestService.list(filters);
-        })
-      )
-      .subscribe({
-        next: list => {
-          this.requests.set(list);
-          this.isLoading.set(false);
-          this.hasLoadedOnce.set(true);
-          console.log('Requests list:', list);
-        },
-        error: () => {
-          this.requests.set([]);
-          this.isLoading.set(false);
-          this.hasLoadedOnce.set(true);
-        }
-      });
+      this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged()),
+      this.statusControl.valueChanges.pipe(startWith(this.statusControl.value), distinctUntilChanged())
+    ]).pipe(skip(1)).subscribe(() => {
+      if (this.table) this.table.first = 0;
+      this.firstOffset.set(0);
+      this.fetchData(0, this.pageSize());
+    });
+
+    // Trigger initial load manually since table is hidden
+    this.fetchData(this.firstOffset(), this.pageSize());
+  }
+
+  loadRequests(event: any) {
+    if (!this.initialLoadDone) {
+      this.initialLoadDone = true;
+      return;
+    }
+    
+    this.isLoading.set(true);
+    const first = event.first !== undefined ? event.first : 0;
+    const size = event.rows || 10;
+    
+    this.firstOffset.set(first);
+    this.pageSize.set(size);
+    this.fetchData(first, size, event.sortField, event.sortOrder);
+  }
+
+  private fetchData(first: number, size: number, sortField: string = 'requestDate', sortOrder: number = -1) {
+    this.isLoading.set(true);
+    const page = size ? first / size : 0;
+    const search = this.searchControl.value || undefined;
+    const requestStatus = this.statusControl.value || undefined;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { first, rows: size, search: search || null, status: requestStatus || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+
+    const filters: RequestListFilter = { page, size, sortBy: sortField, sortDir: sortOrder === 1 ? 'asc' : 'desc' };
+    if (search) filters.search = search;
+    if (requestStatus) filters.requestStatus = requestStatus;
+
+    this.requestService.list(filters).subscribe({
+      next: (response) => {
+        this.requests.set(response.content);
+        this.totalRecords.set(response.totalElements);
+        this.isLoading.set(false);
+        this.hasLoadedOnce.set(true);
+      },
+      error: () => {
+        this.requests.set([]);
+        this.totalRecords.set(0);
+        this.isLoading.set(false);
+        this.hasLoadedOnce.set(true);
+      }
+    });
   }
 }

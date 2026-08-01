@@ -38,10 +38,10 @@ import { TopFeature } from '../../../core/models/scoring.model';
               @for (feature of sortedFeatures(); track feature.featureName) {
                 <tr class="hover:bg-surface-50 transition-colors duration-200 group">
                   <td class="py-3 px-4 font-semibold text-surface-900 group-hover:text-primary-600 transition-colors">{{ feature.featureName }}</td>
-                  <td class="py-3 px-4 text-surface-600 font-medium">{{ feature.featureValue }}</td>
+                  <td class="py-3 px-4 text-surface-600 font-medium">{{ formatValue(feature.featureValue) }}</td>
                   <td class="py-3 px-4 text-right font-mono font-bold"
                       [class]="feature.shapValue > 0 ? 'text-red-500' : 'text-emerald-500'">
-                    {{ feature.shapValue > 0 ? '+' : '' }}{{ feature.shapValue | number:'1.4-4' }}
+                    {{ feature.shapValue > 0 ? '+' : '' }}{{ feature.shapValue | number:'1.2-3' }}
                   </td>
                   <td class="py-3 px-4 text-center">
                     <span
@@ -71,6 +71,14 @@ export class ShapDriversChartComponent {
     return [...this.features()].sort((a, b) => Math.abs(b.shapValue) - Math.abs(a.shapValue));
   });
 
+  formatValue(val: string | number): string {
+    const num = Number(val);
+    if (!isNaN(num) && val !== null && val !== '' && typeof val !== 'boolean') {
+      return num.toLocaleString('es-ES', { maximumFractionDigits: 3 });
+    }
+    return String(val);
+  }
+
   chartHeight = computed(() => {
     const count = this.features().length;
     return Math.max(count * 52, 200) + 'px';
@@ -79,7 +87,7 @@ export class ShapDriversChartComponent {
   chartData = computed(() => {
     const features = this.sortedFeatures();
     const reversed = [...features].reverse();
-    const labels = reversed.map(f => `${f.featureName} = ${f.featureValue}`);
+    const labels = reversed.map(f => `${f.featureName} = ${this.formatValue(f.featureValue)}`);
     const values = reversed.map(f => f.shapValue);
     
     // Balanced pastel colors
@@ -141,7 +149,8 @@ export class ShapDriversChartComponent {
             const value = context.raw as number;
             const sign = value > 0 ? '+' : '';
             const direction = value > 0 ? '↑ Aumenta riesgo' : '↓ Reduce riesgo';
-            return `SHAP: ${sign}${value.toFixed(4)} — ${direction}`;
+            const formattedValue = value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+            return `SHAP: ${sign}${formattedValue} — ${direction}`;
           }
         }
       }
@@ -166,7 +175,8 @@ export class ShapDriversChartComponent {
           color: '#64748b',
           font: { size: 12, weight: '500' },
           callback: (value: number) => {
-            return value > 0 ? `+${value}` : `${value}`;
+            const formatted = value.toLocaleString('es-ES', { maximumFractionDigits: 3 });
+            return value > 0 ? `+${formatted}` : `${formatted}`;
           }
         },
         title: {

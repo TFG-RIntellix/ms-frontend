@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../tokens/api-base-url.token';
 import { toHttpParams } from '../utils/http-params';
+import { PageResponse } from '../models/page-response.model';
 import { RequestDetails, RequestParty, RequestSummary } from '../models/request.model';
 import { Scoring } from '../models/scoring.model';
 
@@ -9,6 +10,10 @@ export interface RequestListFilter {
   search?: string;
   partyId?: string;
   requestStatus?: string;
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -17,7 +22,7 @@ export class RequestService {
   private readonly apiUrl = inject(API_BASE_URL);
 
   list(filters: RequestListFilter = {}) {
-    return this.http.get<RequestSummary[]>(`${this.apiUrl}/api/requests`, {
+    return this.http.get<PageResponse<RequestSummary>>(`${this.apiUrl}/api/requests`, {
       params: toHttpParams(filters as Record<string, unknown>)
     });
   }

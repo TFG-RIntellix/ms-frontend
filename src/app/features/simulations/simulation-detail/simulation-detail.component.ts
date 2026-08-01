@@ -64,7 +64,7 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
         <div class="space-y-6">
           
           <!-- Variables de simulación -->
-          <p-card styleClass="rounded-xl shadow-sm">
+          <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="title">
               <div class="flex items-center justify-between text-surface-900 font-semibold">
                 <span>Variables modificadas en la simulación</span>
@@ -80,7 +80,7 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
             </ng-template>
           </p-card>
           <!-- Detalles adicionales de la simulación -->
-          <p-card styleClass="rounded-xl shadow-sm">
+          <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="title">
               <span class="text-surface-900 font-semibold">Información del escenario</span>
             </ng-template>
@@ -123,7 +123,7 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
         <!-- Panel Derecho: Comparativa y Acciones -->
         <div class="space-y-6 sticky top-6">
           
-          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500">
+          <p-card styleClass="rounded-xl shadow-sm border-t-4 border-t-primary-500 transition-all duration-300 hover:shadow-md">
             <ng-template pTemplate="title">
               <span class="text-surface-900 font-semibold">Comparativa Guardada</span>
             </ng-template>
@@ -137,8 +137,8 @@ import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
                 </div>
                 @for (metric of metricRows(); track metric.label) {
                   @if (!metric.hidden) {
-                    <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg">
-                      <div class="font-medium text-surface-700 truncate" [title]="metric.label">{{ metric.label }}</div>
+                    <div class="grid grid-cols-4 gap-3 items-center p-3 bg-surface-50 rounded-lg group transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm hover:bg-white border border-transparent hover:border-surface-200">
+                      <div class="font-medium text-surface-700 truncate group-hover:text-primary-600 transition-colors" [title]="metric.label">{{ metric.label }}</div>
                       <div class="text-right font-mono text-surface-700">{{ metric.base | metricValue:metric }}</div>
                       <div class="text-right font-mono font-semibold text-surface-900">{{ metric.sim | metricValue:metric }}</div>
                       <div class="flex justify-end">
@@ -206,24 +206,24 @@ export class SimulationDetailComponent implements OnInit {
     const simResults = sim.simulatedResults;
     const delta = sim.delta;
     return [
-      { label: 'PD (%)', base: s.pd * 100, sim: (sim.simulatedPd ?? 0) * 100, delta: sim.pdChange ?? 0, isCurrency: false, invert: false, format: '1.2-2' },
-      { label: 'LGD (%)', base: s.lgd * 100, sim: (sim.simulatedLgd ?? 0) * 100, delta: ((sim.simulatedLgd ?? 0) - s.lgd) * 100, isCurrency: false, invert: false, format: '1.2-2' },
-      { label: 'EAD', base: s.ead, sim: sim.simulatedEad ?? 0, delta: (sim.simulatedEad ?? 0) - s.ead, isCurrency: true, invert: false },
-      { label: 'ECL', base: s.ecl, sim: sim.simulatedEcl ?? 0, delta: sim.elChange ?? delta?.eclChange ?? 0, isCurrency: true, invert: false },
+      { label: 'PD (%)', base: s.pd * 100, sim: (sim.simulatedPd ?? 0) * 100, delta: (delta?.pdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
+      { label: 'LGD (%)', base: s.lgd * 100, sim: (sim.simulatedLgd ?? 0) * 100, delta: (delta?.lgdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
+      { label: 'EAD', base: s.ead, sim: sim.simulatedEad ?? 0, delta: delta?.eadChange ?? 0, isCurrency: true, invert: true },
+      { label: 'ECL', base: s.ecl, sim: sim.simulatedEcl ?? 0, delta: delta?.eclChange ?? 0, isCurrency: true, invert: true },
       {
         label: 'Cuota mensual',
         base: s.monthlyPayment,
         sim: simResults?.monthlyPayment ?? 0,
         delta: delta?.monthlyPaymentChange ?? 0,
         isCurrency: true,
-        invert: false,
+        invert: true,
         hidden: !simResults
       },
       {
         label: 'DTI (%)',
         base: s.dti * 100,
         sim: (simResults?.dti ?? 0) * 100,
-        delta: delta?.dtiChange ?? 0,
+        delta: (delta?.dtiChange ?? 0) * 100,
         isCurrency: false,
         invert: true,
         format: '1.2-2',
@@ -235,7 +235,7 @@ export class SimulationDetailComponent implements OnInit {
         sim: simResults?.totalPayment ?? 0,
         delta: delta?.totalPaymentChange ?? 0,
         isCurrency: true,
-        invert: false,
+        invert: true,
         hidden: !simResults
       },
       {
@@ -244,7 +244,7 @@ export class SimulationDetailComponent implements OnInit {
         sim: simResults?.totalInterest ?? 0,
         delta: delta?.totalInterestChange ?? 0,
         isCurrency: true,
-        invert: false,
+        invert: true,
         hidden: !simResults
       },
       {
@@ -253,7 +253,7 @@ export class SimulationDetailComponent implements OnInit {
         sim: simResults?.disposableIncome ?? 0,
         delta: delta?.monthlyDisposableIncomeChange ?? 0,
         isCurrency: true,
-        invert: true,
+        invert: false,
         hidden: !simResults
       }
     ];

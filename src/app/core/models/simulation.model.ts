@@ -24,6 +24,8 @@ export interface SimulationMetrics {
 
 export interface SimulationDelta {
   pdChange: number;
+  lgdChange: number;
+  eadChange: number;
   eclChange: number;
   riskGradeChange: string;
   monthlyPaymentChange: number;
@@ -48,9 +50,6 @@ export interface SimulationDetails {
   simulatedEcl: number;
   simulatedRiskGrade: string;
   simulatedDecision: string;
-  pdChange: number;
-  elChange: number;
-  riskGradeChange: string;
   isArchived: boolean;
   simulatedResults?: SimulationMetrics;
   delta?: SimulationDelta;

@@ -10,7 +10,7 @@ export type RiskSeverity = 'low' | 'medium' | 'high';
   imports: [CommonModule, CurrencyValuePipe],
   template: `
     <div
-      class="relative overflow-hidden rounded-xl p-5 border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md bg-white"
+      class="relative overflow-hidden rounded-xl p-5 border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md bg-white group"
       [style.border-color]="colors().border"
       [style.border-left-width]="'4px'"
       [style.border-left-color]="colors().accent"

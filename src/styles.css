@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tailwindcss-primeui';
+@import 'primeicons/primeicons.css';
 
 @theme {
   --color-rintellix-primary: #F30005;

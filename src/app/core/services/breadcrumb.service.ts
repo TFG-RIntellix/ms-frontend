@@ -36,7 +36,7 @@ export class BreadcrumbService {
       // Add breadcrumb if the route has data.breadcrumb
       if (route.data['breadcrumb']) {
         const breadcrumb = {
-          label: this.getLabel(route.data),
+          label: this.getLabel(route),
           routerLink: '/' + routeUrl.join('/')
         };
         
@@ -54,8 +54,9 @@ export class BreadcrumbService {
     }
   }
 
-  private getLabel(data: Data): string {
+  private getLabel(route: ActivatedRouteSnapshot): string {
+    const data = route.data;
     // Allows dynamic function or static string for breadcrumb
-    return typeof data['breadcrumb'] === 'function' ? data['breadcrumb'](data) : data['breadcrumb'];
+    return typeof data['breadcrumb'] === 'function' ? data['breadcrumb'](route) : data['breadcrumb'];
   }
 }

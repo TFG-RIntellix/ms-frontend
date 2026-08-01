@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../tokens/api-base-url.token';
 import { toHttpParams } from '../utils/http-params';
+import { PageResponse } from '../models/page-response.model';
 import {
   CreateSimulationPayload,
   DraftRequest,
@@ -15,6 +16,10 @@ export interface SimulationListFilter {
   search?: string;
   partyId?: string;
   archived?: boolean;
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,7 +28,7 @@ export class SimulationService {
   private readonly apiUrl = inject(API_BASE_URL);
 
   list(filters: SimulationListFilter = {}) {
-    return this.http.get<SimulationSummary[]>(`${this.apiUrl}/api/simulations`, {
+    return this.http.get<PageResponse<SimulationSummary>>(`${this.apiUrl}/api/simulations`, {
       params: toHttpParams(filters as Record<string, unknown>)
     });
   }

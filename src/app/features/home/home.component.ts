@@ -27,13 +27,13 @@ interface DashboardCard {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
       <!-- Solicitudes Card -->
       @for (card of menuCards; track card.title) {
-      <p-card styleClass="rounded-xl shadow-sm hover:shadow-md transition h-full">
+      <p-card styleClass="rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 h-full group">
         <ng-template pTemplate="content">
           <div class="flex flex-col items-center text-center space-y-4 py-4">
-            <div [class]="'w-24 h-24 rounded-full flex items-center justify-center ' + card.iconBgClass">
+            <div [class]="'w-24 h-24 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ' + card.iconBgClass">
               <ng-lottie [options]="{path: card.icon}" width="80px" height="80px" />
             </div>
-            <h3 class="text-xl font-semibold text-surface-900">{{ card.title }}</h3>
+            <h3 class="text-xl font-semibold text-surface-900 group-hover:text-primary-600 transition-colors duration-300">{{ card.title }}</h3>
             <p class="text-surface-500 flex-1">
               {{ card.description }}
             </p>

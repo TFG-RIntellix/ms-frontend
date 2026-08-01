@@ -1,18 +1,25 @@
-import { Component, OnInit, inject, signal , ChangeDetectionStrategy} from '@angular/core';
+import { Component, OnInit, inject, signal , ChangeDetectionStrategy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { combineLatest, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
+import { combineLatest } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, startWith, skip } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { TableModule } from 'primeng/table';
+import { Table, TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ReportService, ReportListFilter } from '../../core/services/report.service';
 import { ReportSummary } from '../../core/models/report.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
+import { TooltipModule } from 'primeng/tooltip';
+import { RequestService } from '../../core/services/request.service';
+
+export interface ReportSummaryWithReqCode extends ReportSummary {
+  requestCode?: string;
+}
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-reports',
@@ -25,128 +32,192 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
     TableModule,
     TagModule,
     PageHeaderComponent,
-    SpinnerComponent
+    SpinnerComponent,
+    TooltipModule
   ],
   template: `
     <app-page-header
       title="Informes"
       subtitle="Listado de informes de scoring en PDF"
     />
-    <p-card styleClass="rounded-xl shadow-sm">
+    <p-card styleClass="rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
       <ng-template pTemplate="content">
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
-          <span class="p-input-icon-left w-full sm:w-80">
-            <i class="pi pi-search"></i>
+          <div class="relative w-full sm:w-80">
+            <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 z-10"></i>
             <input
               pInputText
               type="text"
               [formControl]="searchControl"
               placeholder="Buscar por solicitud o scoring"
-              class="w-full"
+              class="w-full !pl-10"
             />
-          </span>
+          </div>
         </div>
-        <p-table
+        @if (!hasLoadedOnce()) {
+          <app-spinner height="400px"></app-spinner>
+        } @else {
+          <p-table
+          #dt
           [value]="reports()"
           [paginator]="true"
-          [rows]="10"
+          [first]="firstOffset()"
+          [rows]="pageSize()"
+          [totalRecords]="totalRecords()"
+          [lazy]="true"
+          (onLazyLoad)="loadReports($event)"
           [rowsPerPageOptions]="[10, 25, 50]"
           [loading]="isLoading()"
           [tableStyle]="{'min-width':'55rem'}"
           styleClass="p-datatable-sm"
           [rowHover]="true"
-          stateStorage="session"
-          stateKey="reports-list-session"
         >
           <ng-template pTemplate="loadingIcon">
             <app-spinner [overlay]="false"></app-spinner>
           </ng-template>
           <ng-template pTemplate="header">
             <tr>
-              <th>Título</th>
-              <th>Solicitud</th>
-              <th>Scoring</th>
-              <th>Generado por</th>
-              <th>Fecha</th>
-              <th>Tamaño</th>
-              <th class="text-right">Acciones</th>
+              <th pSortableColumn="title" class="font-semibold">Título 
+                <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-alpha-down text-primary-500': dt.sortField === 'title' && dt.sortOrder === 1, 'pi-sort-alpha-up text-primary-500': dt.sortField === 'title' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'title'}"></i>
+              </th>
+              <th pSortableColumn="requestId" class="font-semibold">Solicitud 
+                <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-numeric-down text-primary-500': dt.sortField === 'requestId' && dt.sortOrder === 1, 'pi-sort-numeric-up text-primary-500': dt.sortField === 'requestId' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'requestId'}"></i>
+              </th>
+              <th pSortableColumn="generatedBy" class="font-semibold">Generado por 
+                <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-alpha-down text-primary-500': dt.sortField === 'generatedBy' && dt.sortOrder === 1, 'pi-sort-alpha-up text-primary-500': dt.sortField === 'generatedBy' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'generatedBy'}"></i>
+              </th>
+              <th pSortableColumn="generatedDate" class="font-semibold">Fecha 
+                <i class="pi ml-2 text-surface-400" [ngClass]="{'pi-sort-numeric-down text-primary-500': dt.sortField === 'generatedDate' && dt.sortOrder === 1, 'pi-sort-numeric-up text-primary-500': dt.sortField === 'generatedDate' && dt.sortOrder === -1, 'pi-sort-alt': dt.sortField !== 'generatedDate'}"></i>
+              </th>
+              <th class="font-semibold">Tamaño</th>
+              <th style="width: 8rem; text-align: center;" class="font-semibold">Acciones</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-report>
-            <tr>
+            <tr class="group hover:bg-white hover:shadow-sm transition-all duration-300">
               <td class="font-medium text-surface-900">{{ report.title }}</td>
-              <td class="font-mono text-surface-600">{{ report.requestId }}</td>
-              <td class="font-mono text-surface-600">{{ report.scoringId }}</td>
+              <td class="font-mono text-surface-600">{{ report.requestCode || report.requestId }}</td>
               <td>{{ report.generatedBy }}</td>
-              <td class="text-surface-500 text-sm">{{ report.generatedDate | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="text-surface-500 text-sm">{{ report.generationDate || report.generatedDate | date:'dd/MM/yyyy HH:mm' }}</td>
               <td class="font-mono">{{ report.fileSizeBytes | number:'1.0-0' }} bytes</td>
-              <td class="text-right">
-                <p-button
-                  [outlined]="true"
-                  icon="pi pi-eye"
-                  label="Ver PDF"
-                  (onClick)="viewPdf(report)"
-                />
+              <td style="text-align: center;">
+                <div class="flex flex-wrap justify-center gap-1">
+                  <p-button
+                    [rounded]="true"
+                    [text]="true"
+                    severity="info"
+                    icon="pi pi-file-pdf"
+                    pTooltip="Ver PDF"
+                    tooltipPosition="top"
+                    (onClick)="viewPdf(report)"
+                  />
+                </div>
               </td>
             </tr>
           </ng-template>
         </p-table>
+        }
       </ng-template>
     </p-card>
   `
 })
 export class ReportsComponent implements OnInit {
+  @ViewChild('dt') table!: Table;
   private reportService = inject(ReportService);
+  private requestService = inject(RequestService);
+  private router = inject(Router);
   private route = inject(ActivatedRoute);
-  reports = signal<ReportSummary[]>([]);
+  
+  reports = signal<ReportSummaryWithReqCode[]>([]);
+  totalRecords = signal<number>(0);
+  pageSize = signal<number>(10);
+  firstOffset = signal<number>(0);
   isLoading = signal(false);
+  hasLoadedOnce = signal(false);
   searchControl = new FormControl('');
+  private initialLoadDone = false;
+
   ngOnInit() {
+    const firstStr = this.route.snapshot.queryParamMap.get('first');
+    if (firstStr) this.firstOffset.set(parseInt(firstStr, 10));
+    const rowsStr = this.route.snapshot.queryParamMap.get('rows');
+    if (rowsStr) this.pageSize.set(parseInt(rowsStr, 10));
+    
     const requestId = this.route.snapshot.queryParamMap.get('requestId') || '';
     const scoringId = this.route.snapshot.queryParamMap.get('scoringId') || '';
-    if (requestId || scoringId) {
-      this.searchControl.setValue(requestId || scoringId, { emitEvent: true });
+    const search = this.route.snapshot.queryParamMap.get('search') || '';
+
+    if (search || requestId || scoringId) {
+      this.searchControl.setValue(search || requestId || scoringId, { emitEvent: false });
     }
+    
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged())
-    ])
-      .pipe(
-        switchMap(([search]) => {
-          this.isLoading.set(true);
-          
-          // If there is a search term and it looks like a valid ObjectId (24 hex chars)
-          if (search && /^[0-9a-fA-F]{24}$/.test(search)) {
-            // It could be a requestId (or scoringId, but backend only supports requestId now)
-            return this.reportService.getByRequestId(search).pipe(
-              map(report => report ? [report] : []),
-              catchError(() => {
-                // If not found by requestId, we could just return empty or try fetching all
-                return of([]);
-              })
-            );
-          } else if (search) {
-             // Fetch all and filter client side
-             return this.reportService.list().pipe(
-               map(reports => reports.filter(r => 
-                 r.requestId.includes(search) || r.scoringId.includes(search) || r.title.toLowerCase().includes(search.toLowerCase())
-               ))
-             );
-          }
-          
-          return this.reportService.list();
-        })
-      )
-      .subscribe({
-        next: list => {
-          this.reports.set(list);
-          this.isLoading.set(false);
-        },
-        error: () => {
-          this.reports.set([]);
-          this.isLoading.set(false);
-        }
-      });
+    ]).pipe(skip(1)).subscribe(() => {
+      // Whenever filters change, reset to page 0
+      if (this.table) {
+        this.table.first = 0;
+      }
+      this.firstOffset.set(0);
+      this.fetchData(0, this.pageSize());
+    });
+
+    // Trigger initial load manually since table is hidden
+    this.fetchData(this.firstOffset(), this.pageSize());
   }
+
+  loadReports(event: any) {
+    if (!this.initialLoadDone) {
+      this.initialLoadDone = true;
+      return;
+    }
+    
+    this.isLoading.set(true);
+    const first = event.first !== undefined ? event.first : 0;
+    const size = event.rows || 10;
+    
+    this.pageSize.set(size);
+    this.firstOffset.set(first);
+
+    this.fetchData(first, size, event.sortField, event.sortOrder);
+  }
+
+  private fetchData(first: number, size: number, sortField: string = 'generatedDate', sortOrder: number = -1) {
+    this.isLoading.set(true);
+    const page = size ? first / size : 0;
+    const search = this.searchControl.value || undefined;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { first, rows: size, search: search || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+
+    const filters: ReportListFilter = { page, size, sortBy: sortField, sortDir: sortOrder === 1 ? 'asc' : 'desc' };
+    if (search) filters.search = search;
+
+    this.reportService.list(filters).subscribe({
+      next: (pageResponse) => {
+        const augmentedReports: ReportSummaryWithReqCode[] = pageResponse.content.map((r: any) => ({
+          ...r,
+          requestCode: r.requestCode || r.requestId
+        }));
+
+        this.reports.set(augmentedReports);
+        this.totalRecords.set(pageResponse.totalElements);
+        this.isLoading.set(false);
+        this.hasLoadedOnce.set(true);
+      },
+      error: () => {
+        this.reports.set([]);
+        this.totalRecords.set(0);
+        this.isLoading.set(false);
+        this.hasLoadedOnce.set(true);
+      }
+    });
+  }
+
   viewPdf(report: ReportSummary) {
     this.reportService.getFile(report.reportId).subscribe({
       next: blob => {

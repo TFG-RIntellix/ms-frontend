@@ -1,4 +1,4 @@
-import { Component, effect, input, output, inject , ChangeDetectionStrategy} from '@angular/core';
+import { Component, effect, input, output, inject, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -6,6 +6,8 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { DropdownModule } from 'primeng/dropdown';
 import { ButtonModule } from 'primeng/button';
 import { DynamicField } from '../../models/dynamic-form.model';
+import { Subscription } from 'rxjs';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-dynamic-form',
@@ -28,11 +30,12 @@ import { DynamicField } from '../../models/dynamic-form.model';
                 [formControlName]="field.key"
                 [suffix]="field.suffix ?? ''"
                 [prefix]="field.prefix ?? ''"
-                [min]="field.validators?.min ?? null"
-                [max]="field.validators?.max ?? null"
+                [min]="field.validators?.min"
+                [max]="field.validators?.max"
                 [step]="field.validators?.step ?? 1"
                 [minFractionDigits]="0"
                 [maxFractionDigits]="4"
+                [useGrouping]="false"
                 mode="decimal"
                 class="w-full"
                 styleClass="w-full"
@@ -87,7 +90,7 @@ import { DynamicField } from '../../models/dynamic-form.model';
     </form>
   `
 })
-export class DynamicFormComponent {
+export class DynamicFormComponent implements OnDestroy {
   private fb = inject(FormBuilder);
   fields = input<DynamicField[]>([]);
   readonly = input(false);
@@ -96,13 +99,16 @@ export class DynamicFormComponent {
   isSubmitting = input(false);
   formSubmit = output<any>();
   form: FormGroup = this.fb.group({});
+  private sub?: Subscription;
 
   constructor() {
     effect(() => {
       this.buildForm();
     });
   }
+
   private buildForm() {
+    this.sub?.unsubscribe();
     const group: any = {};
     
     this.fields().forEach(field => {
@@ -122,10 +128,32 @@ export class DynamicFormComponent {
       group[field.key] = control;
     });
     this.form = this.fb.group(group);
+
+    const isRevolvingCtrl = this.form.get('isRevolving');
+    const interestRateCtrl = this.form.get('interestRate');
+    if (isRevolvingCtrl && interestRateCtrl) {
+      if (!isRevolvingCtrl.value) {
+        interestRateCtrl.setValue(0);
+        interestRateCtrl.disable();
+      }
+      this.sub = isRevolvingCtrl.valueChanges.subscribe(val => {
+        if (!val) {
+          interestRateCtrl.setValue(0);
+          interestRateCtrl.disable();
+        } else {
+          interestRateCtrl.enable();
+        }
+      });
+    }
   }
+
   onSubmit() {
     if (this.form.valid && !this.readonly()) {
-      this.formSubmit.emit(this.form.value);
+      this.formSubmit.emit(this.form.getRawValue());
     }
+  }
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
   }
 }
