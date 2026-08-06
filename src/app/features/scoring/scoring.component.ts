@@ -18,6 +18,7 @@ import { CurrencyValuePipe } from '../../shared/ui/currency-value/currency-value
 import { riskGradeColor } from '../../core/utils/labels';
 import { TagSeverity } from '../../core/utils/tag-severity';
 import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.component';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-scoring',
@@ -169,6 +170,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
   reportId = signal<string | undefined>(undefined);
   isReportLoading = signal(false);
   private pollingSub?: Subscription;
+
   riskSeverity = computed<TagSeverity>(() => (riskGradeColor[this.scoring()?.riskGrade ?? ''] ?? 'info') as TagSeverity);
   lgdSeverity = computed<RiskSeverity>(() => {
     const lgd = (this.scoring()?.lgd ?? 0) * 100;
@@ -176,6 +178,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
     if (lgd < 60) return 'medium';
     return 'high';
   });
+
   // EAD and ECL severity derived from the riskGrade (A-H)
   gradeSeverity = computed<RiskSeverity>(() => {
     const grade = this.scoring()?.riskGrade ?? '';
@@ -183,9 +186,11 @@ export class ScoringComponent implements OnInit, OnDestroy {
     if (['C', 'D', 'E'].includes(grade)) return 'medium';
     return 'high';
   });
+
   ngOnDestroy() {
     this.pollingSub?.unsubscribe();
   }
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
@@ -194,10 +199,6 @@ export class ScoringComponent implements OnInit, OnDestroy {
     }
     this.requestId.set(id);
     
-    // Mark as reviewed asynchronously; no need to block the UI
-    this.requestService.markAsReviewed(id).subscribe({
-      error: (err) => console.error('Error marking request as reviewed:', err)
-    });
     this.scoringService.getByRequest(id).subscribe({
       next: res => {
         this.scoring.set(res);
@@ -206,10 +207,12 @@ export class ScoringComponent implements OnInit, OnDestroy {
       error: () => this.scoring.set(undefined)
     });
   }
+
   checkReport(requestId: string) {
     this.isReportLoading.set(true);
     let attempts = 0;
     const maxAttempts = 20; // 60 segundos de timeout (20 * 3s)
+    
     // Poll every 3 seconds until the report is generated or timeout is reached
     this.pollingSub = timer(0, 3000).subscribe(() => {
       attempts++;
@@ -219,6 +222,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
         alert('El informe está tardando demasiado en generarse. Por favor, revíselo más tarde.');
         return;
       }
+      
       this.reportService.getByRequestId(requestId).subscribe({
         next: report => {
           if (report && report.reportId) {
@@ -234,6 +238,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
       });
     });
   }
+
   viewPdf() {
     const id = this.reportId();
     if (!id) return;

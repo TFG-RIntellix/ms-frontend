@@ -39,7 +39,7 @@ export class RequestService {
     return this.http.get<Scoring>(`${this.apiUrl}/api/requests/${requestId}/scoring`);
   }
 
-  markAsReviewed(requestId: string) {
-    return this.http.put<void>(`${this.apiUrl}/api/requests/${requestId}/review`, {});
+  updateStatus(requestId: string, requestStatus: string) {
+    return this.http.put<RequestDetails>(`${this.apiUrl}/api/requests/${requestId}`, { requestStatus });
   }
 }

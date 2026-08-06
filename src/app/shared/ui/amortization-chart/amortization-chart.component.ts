@@ -27,7 +27,20 @@ export class AmortizationChartComponent {
     if (!am) return null;
     const baseData = this.calculateAmortizationSeries(am.base);
     const simData = am.sim ? this.calculateAmortizationSeries(am.sim) : { series: [], pointRadii: [], pointColors: [] };
-    const maxMonths = Math.max(am.base.months, am.sim?.months ?? 0, 12);
+    const baseSeriesLen = baseData.series.length - 1;
+    const simSeriesLen = simData ? simData.series.length - 1 : 0;
+    const maxMonths = Math.max(am.base.months, am.sim?.months ?? 0, baseSeriesLen, simSeriesLen, 12);
+    
+    const padTo = (dataObj: any, length: number) => {
+      while (dataObj.series.length <= length) {
+        dataObj.series.push(0);
+        dataObj.pointRadii.push(0);
+        dataObj.pointColors.push('rgba(0,0,0,0)');
+      }
+    };
+    padTo(baseData, maxMonths);
+    if (simData) padTo(simData, maxMonths);
+
     const labels = Array.from({ length: maxMonths + 1 }, (_, i) => `Mes ${i}`);
     return {
       labels: labels,
@@ -70,7 +83,8 @@ export class AmortizationChartComponent {
     const rate = data.rate > 0 ? (data.rate / 100 / 12) : 0;
     const minPayment = (balance * rate) + 0.01;
     const payment = Math.max(data.payment, minPayment);
-    for (let i = 1; i <= data.months; i++) {
+    const maxSimMonths = Math.max(data.months > 0 ? data.months : 360, 360);
+    for (let i = 1; i <= maxSimMonths; i++) {
       const interestForMonth = balance * rate;
       cumulativeInterest += interestForMonth;
       balance = balance * (1 + rate) - payment;
@@ -89,11 +103,6 @@ export class AmortizationChartComponent {
         pointRadii.push(0);
         pointColors.push('rgba(0,0,0,0)');
       }
-    }
-    while (series.length <= data.months) {
-      series.push(0);
-      pointRadii.push(0);
-      pointColors.push('rgba(0,0,0,0)');
     }
     return { series, pointRadii, pointColors, breakevenMonth };
   }

@@ -12,9 +12,7 @@ import Keycloak from 'keycloak-js';
       <p-card styleClass="w-full max-w-md shadow-lg rounded-2xl">
         <ng-template pTemplate="content">
           <div class="flex flex-col items-center text-center mb-6">
-            <div class="h-16 w-16 rounded-2xl bg-primary-500 flex items-center justify-center mb-4 shadow-md">
-              <i class="pi pi-chart-line text-white text-3xl"></i>
-            </div>
+            <img src="/assets/icono.svg" alt="RIntellix Logo" class="h-16 w-16 mb-4">
             <h1 class="text-2xl font-semibold text-surface-900">RIntellix</h1>
             <p class="text-surface-500 mt-1">Gestión de riesgos de crédito</p>
           </div>

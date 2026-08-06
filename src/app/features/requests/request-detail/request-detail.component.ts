@@ -115,6 +115,24 @@ import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-fie
               </div>
               <p-divider />
               <div class="grid grid-cols-1 gap-2">
+                @if (req.status === 'PENDIENTE_DE_REVISION' && !isMarkedAsReviewed()) {
+                  <p-button
+                    styleClass="w-full"
+                    label="Marcar como revisada"
+                    icon="pi pi-check-circle"
+                    [outlined]="true"
+                    severity="secondary"
+                    (onClick)="markAsReviewed()"
+                  />
+                } @else if (req.status === 'REVISADO' || isMarkedAsReviewed()) {
+                  <p-button
+                    styleClass="w-full"
+                    label="Revisada"
+                    icon="pi pi-check-circle"
+                    severity="success"
+                    [disabled]="true"
+                  />
+                }
                 <p-button
                   styleClass="w-full"
                   label="Ver scoring"
@@ -142,6 +160,7 @@ export class RequestDetailComponent implements OnInit {
   private requestService = inject(RequestService);
   request = signal<RequestDetails | undefined>(undefined);
   isLoading = signal(true);
+  isMarkedAsReviewed = signal(false);
   readonly employmentOptions = employmentStatusOptions;
   fields = computed<DynamicField[]>(() => this.buildFields(this.request()));
   pageTitle = computed(() => {
@@ -163,6 +182,19 @@ export class RequestDetailComponent implements OnInit {
       error: () => this.router.navigate(['/requests'])
     });
   }
+
+  markAsReviewed() {
+    const req = this.request();
+    if (!req) return;
+    this.requestService.updateStatus(req.requestId, 'REVISADO').subscribe({
+      next: (updatedReq) => {
+        this.isMarkedAsReviewed.set(true);
+        this.request.set(updatedReq);
+      },
+      error: (err) => console.error('Error marking request as reviewed:', err)
+    });
+  }
+
   mainAmount(req: RequestDetails): number {
     if (req.requestType === 'TARJETA_CREDITO') {
       return req.requestedCreditLimit ?? 0;

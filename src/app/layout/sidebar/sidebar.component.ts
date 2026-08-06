@@ -7,11 +7,8 @@ import Keycloak from 'keycloak-js';
   imports: [RouterLink, RouterLinkActive],
   template: `
     <aside class="h-screen w-64 bg-surface-900 text-white flex flex-col shadow-lg">
-      <div class="p-6 flex items-center gap-3 border-b border-surface-800">
-        <div class="h-10 w-10 rounded-lg bg-primary-500 flex items-center justify-center">
-          <i class="pi pi-chart-line text-white text-lg"></i>
-        </div>
-        <span class="text-xl font-semibold tracking-tight">RIntellix</span>
+      <div class="py-6 px-2 flex items-center justify-center border-b border-surface-800">
+        <img src="assets/logo-completo-blanco.svg" alt="RIntellix" class="w-full h-auto">
       </div>
       <nav class="flex-1 px-4 py-4 space-y-1">
         <a
