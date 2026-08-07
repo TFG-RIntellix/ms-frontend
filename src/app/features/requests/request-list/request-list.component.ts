@@ -2,8 +2,8 @@ import { Component, ChangeDetectionStrategy, OnInit, ViewChild, inject, signal }
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, startWith, skip } from 'rxjs/operators';
+import { combineLatest, Subject, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, startWith, skip, switchMap, catchError, tap } from 'rxjs/operators';
 import { Table, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -139,28 +139,77 @@ export class RequestListComponent implements OnInit {
   statusOptions = [{ value: '', label: 'Todos los estados' }, ...Object.entries(statusLabel).map(([value, label]) => ({ value, label }))];
   private initialLoadDone = false;
 
+  sortField = signal<string>('requestDate');
+  sortOrder = signal<number>(-1);
+  private refreshTrigger$ = new Subject<void>();
+
   ngOnInit() {
     const firstStr = this.route.snapshot.queryParamMap.get('first');
     if (firstStr) this.firstOffset.set(parseInt(firstStr, 10));
     const rowsStr = this.route.snapshot.queryParamMap.get('rows');
     if (rowsStr) this.pageSize.set(parseInt(rowsStr, 10));
-    
+
     const search = this.route.snapshot.queryParamMap.get('search') || '';
     if (search) this.searchControl.setValue(search, { emitEvent: false });
     const status = this.route.snapshot.queryParamMap.get('status') || '';
     if (status) this.statusControl.setValue(status, { emitEvent: false });
 
+    // 1. Listen for filter changes
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged()),
       this.statusControl.valueChanges.pipe(startWith(this.statusControl.value), distinctUntilChanged())
     ]).pipe(skip(1)).subscribe(() => {
       if (this.table) this.table.first = 0;
       this.firstOffset.set(0);
-      this.fetchData(0, this.pageSize());
+      this.refreshTrigger$.next();
     });
 
-    // Trigger initial load manually since table is hidden
-    this.fetchData(this.firstOffset(), this.pageSize());
+    // 2. Main data fetching pipeline using switchMap
+    this.refreshTrigger$.pipe(
+      tap(() => this.isLoading.set(true)),
+      switchMap(() => {
+        const size = this.pageSize();
+        const first = this.firstOffset();
+        const page = size ? first / size : 0;
+        const searchVal = this.searchControl.value || undefined;
+        const requestStatus = this.statusControl.value || undefined;
+        const currentSortField = this.sortField();
+        const currentSortOrder = this.sortOrder();
+
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { first, rows: size, search: searchVal || null, status: requestStatus || null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+
+        const filters: RequestListFilter = {
+          page,
+          size,
+          sortBy: currentSortField,
+          sortDir: currentSortOrder === 1 ? 'asc' : 'desc'
+        };
+        if (searchVal) filters.search = searchVal;
+        if (requestStatus) filters.requestStatus = requestStatus;
+
+        return this.requestService.list(filters).pipe(
+          catchError(() => of(null))
+        );
+      })
+    ).subscribe(response => {
+      if (response) {
+        this.requests.set(response.content);
+        this.totalRecords.set(response.totalElements);
+      } else {
+        this.requests.set([]);
+        this.totalRecords.set(0);
+      }
+      this.isLoading.set(false);
+      this.hasLoadedOnce.set(true);
+    });
+
+    // Trigger initial load manually since table is hidden initially
+    this.refreshTrigger$.next();
   }
 
   loadRequests(event: any) {
@@ -168,46 +217,12 @@ export class RequestListComponent implements OnInit {
       this.initialLoadDone = true;
       return;
     }
-    
-    this.isLoading.set(true);
-    const first = event.first !== undefined ? event.first : 0;
-    const size = event.rows || 10;
-    
-    this.firstOffset.set(first);
-    this.pageSize.set(size);
-    this.fetchData(first, size, event.sortField, event.sortOrder);
-  }
 
-  private fetchData(first: number, size: number, sortField: string = 'requestDate', sortOrder: number = -1) {
-    this.isLoading.set(true);
-    const page = size ? first / size : 0;
-    const search = this.searchControl.value || undefined;
-    const requestStatus = this.statusControl.value || undefined;
+    this.firstOffset.set(event.first !== undefined ? event.first : 0);
+    this.pageSize.set(event.rows || 10);
+    if (event.sortField !== undefined) this.sortField.set(event.sortField);
+    if (event.sortOrder !== undefined) this.sortOrder.set(event.sortOrder);
 
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { first, rows: size, search: search || null, status: requestStatus || null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true
-    });
-
-    const filters: RequestListFilter = { page, size, sortBy: sortField, sortDir: sortOrder === 1 ? 'asc' : 'desc' };
-    if (search) filters.search = search;
-    if (requestStatus) filters.requestStatus = requestStatus;
-
-    this.requestService.list(filters).subscribe({
-      next: (response) => {
-        this.requests.set(response.content);
-        this.totalRecords.set(response.totalElements);
-        this.isLoading.set(false);
-        this.hasLoadedOnce.set(true);
-      },
-      error: () => {
-        this.requests.set([]);
-        this.totalRecords.set(0);
-        this.isLoading.set(false);
-        this.hasLoadedOnce.set(true);
-      }
-    });
+    this.refreshTrigger$.next();
   }
 }

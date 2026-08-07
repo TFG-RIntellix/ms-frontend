@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal , ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -152,6 +152,10 @@ export class SimulationsComponent implements OnInit {
   refreshTrigger$ = new BehaviorSubject<void>(undefined);
   requestIdQueryParam = '';
   private initialLoadDone = false;
+
+  sortField = signal<string>('simulationDate');
+  sortOrder = signal<number>(-1);
+
   statusOptions = [
     { label: 'Activas', value: false },
     { label: 'Archivadas', value: true },
@@ -159,7 +163,7 @@ export class SimulationsComponent implements OnInit {
   ];
   ngOnInit() {
     this.requestIdQueryParam = this.route.snapshot.queryParamMap.get('requestId') || '';
-    
+
     const firstStr = this.route.snapshot.queryParamMap.get('first');
     if (firstStr) this.firstOffset.set(parseInt(firstStr, 10));
     const rowsStr = this.route.snapshot.queryParamMap.get('rows');
@@ -174,23 +178,68 @@ export class SimulationsComponent implements OnInit {
       this.archivedControl.setValue(archivedStr === 'true' ? true : (archivedStr === 'false' ? false : null), { emitEvent: false });
     }
 
-    // Filter changes reset to page 0
+    // 1. Listen for filter changes
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged()),
       this.archivedControl.valueChanges.pipe(startWith(this.archivedControl.value), distinctUntilChanged())
     ]).pipe(skip(1)).subscribe(() => {
       if (this.table) this.table.first = 0;
       this.firstOffset.set(0);
-      this.fetchData(0, this.pageSize());
+      this.refreshTrigger$.next();
     });
 
-    // Reload keeps current page
-    this.refreshTrigger$.pipe(skip(1)).subscribe(() => {
-      this.fetchData(this.firstOffset(), this.pageSize());
+    // 2. Main data fetching pipeline using switchMap
+    this.refreshTrigger$.pipe(
+      skip(1), // Skip the initial undefined value from BehaviorSubject if we manually trigger below, or just don't skip and don't trigger manually
+      tap(() => this.isLoading.set(true)),
+      switchMap(() => {
+        const size = this.pageSize();
+        const first = this.firstOffset();
+        const page = size ? first / size : 0;
+        const searchVal = this.searchControl.value || undefined;
+        const archived = this.archivedControl.value !== null ? this.archivedControl.value : undefined;
+        const currentSortField = this.sortField();
+        const currentSortOrder = this.sortOrder();
+
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {
+            first,
+            rows: size,
+            search: searchVal || null,
+            archived: archived !== undefined ? String(archived) : null
+          },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+
+        const filters: SimulationListFilter = {
+          page,
+          size,
+          sortBy: currentSortField,
+          sortDir: currentSortOrder === 1 ? 'asc' : 'desc',
+          archived
+        };
+        if (searchVal) filters.search = searchVal;
+
+        return this.simulationService.list(filters).pipe(
+          catchError(() => of(null))
+        );
+      })
+    ).subscribe(response => {
+      if (response) {
+        this.simulations.set(response.content);
+        this.totalRecords.set(response.totalElements);
+      } else {
+        this.simulations.set([]);
+        this.totalRecords.set(0);
+      }
+      this.isLoading.set(false);
+      this.hasLoadedOnce.set(true);
     });
 
     // Trigger initial load manually since table is hidden
-    this.fetchData(this.firstOffset(), this.pageSize());
+    this.refreshTrigger$.next();
   }
 
   loadSimulations(event: any) {
@@ -198,50 +247,13 @@ export class SimulationsComponent implements OnInit {
       this.initialLoadDone = true;
       return;
     }
-    this.isLoading.set(true);
-    const first = event.first !== undefined ? event.first : 0;
-    const size = event.rows || 10;
-    
-    this.firstOffset.set(first);
-    this.pageSize.set(size);
-    this.fetchData(first, size, event.sortField, event.sortOrder);
-  }
 
-  private fetchData(first: number, size: number, sortField: string = 'simulationDate', sortOrder: number = -1) {
-    this.isLoading.set(true);
-    const page = size ? first / size : 0;
-    const search = this.searchControl.value || undefined;
-    const archived = this.archivedControl.value !== null ? this.archivedControl.value : undefined;
+    this.firstOffset.set(event.first !== undefined ? event.first : 0);
+    this.pageSize.set(event.rows || 10);
+    if (event.sortField !== undefined) this.sortField.set(event.sortField);
+    if (event.sortOrder !== undefined) this.sortOrder.set(event.sortOrder);
 
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { 
-        first, 
-        rows: size, 
-        search: search || null, 
-        archived: archived !== undefined ? String(archived) : null 
-      },
-      queryParamsHandling: 'merge',
-      replaceUrl: true
-    });
-
-    const filters: SimulationListFilter = { page, size, sortBy: sortField, sortDir: sortOrder === 1 ? 'asc' : 'desc', archived };
-    if (search) filters.search = search;
-
-    this.simulationService.list(filters).subscribe({
-      next: (response) => {
-        this.simulations.set(response.content);
-        this.totalRecords.set(response.totalElements);
-        this.isLoading.set(false);
-        this.hasLoadedOnce.set(true);
-      },
-      error: () => {
-        this.simulations.set([]);
-        this.totalRecords.set(0);
-        this.isLoading.set(false);
-        this.hasLoadedOnce.set(true);
-      }
-    });
+    this.refreshTrigger$.next();
   }
   toggleArchive(sim: SimulationSummary) {
     this.simulationService.archive(sim.simulationId, !sim.isArchived).subscribe({

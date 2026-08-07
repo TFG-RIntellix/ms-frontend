@@ -2,8 +2,8 @@ import { Component, OnInit, inject, signal , ChangeDetectionStrategy, ViewChild 
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { combineLatest } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, startWith, skip } from 'rxjs/operators';
+import { combineLatest, Subject, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, startWith, skip, switchMap, tap } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -136,6 +136,10 @@ export class ReportsComponent implements OnInit {
   hasLoadedOnce = signal(false);
   searchControl = new FormControl('');
   private initialLoadDone = false;
+  
+  sortField = signal<string>('generatedDate');
+  sortOrder = signal<number>(-1);
+  private refreshTrigger$ = new Subject<void>();
 
   ngOnInit() {
     const firstStr = this.route.snapshot.queryParamMap.get('first');
@@ -151,6 +155,7 @@ export class ReportsComponent implements OnInit {
       this.searchControl.setValue(search || requestId || scoringId, { emitEvent: false });
     }
     
+    // 1. Listen for filter changes
     combineLatest([
       this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged())
     ]).pipe(skip(1)).subscribe(() => {
@@ -159,11 +164,57 @@ export class ReportsComponent implements OnInit {
         this.table.first = 0;
       }
       this.firstOffset.set(0);
-      this.fetchData(0, this.pageSize());
+      this.refreshTrigger$.next();
+    });
+
+    // 2. Main data fetching pipeline using switchMap
+    this.refreshTrigger$.pipe(
+      tap(() => this.isLoading.set(true)),
+      switchMap(() => {
+        const size = this.pageSize();
+        const first = this.firstOffset();
+        const page = size ? first / size : 0;
+        const searchVal = this.searchControl.value || undefined;
+        const currentSortField = this.sortField();
+        const currentSortOrder = this.sortOrder();
+
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { first, rows: size, search: searchVal || null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+
+        const filters: ReportListFilter = { 
+          page, 
+          size, 
+          sortBy: currentSortField, 
+          sortDir: currentSortOrder === 1 ? 'asc' : 'desc' 
+        };
+        if (searchVal) filters.search = searchVal;
+
+        return this.reportService.list(filters).pipe(
+          catchError(() => of(null)) // Catch errors so the pipeline doesn't die
+        );
+      })
+    ).subscribe(pageResponse => {
+      if (pageResponse) {
+        const augmentedReports: ReportSummaryWithReqCode[] = pageResponse.content.map((r: any) => ({
+          ...r,
+          requestCode: r.requestCode || r.requestId
+        }));
+        this.reports.set(augmentedReports);
+        this.totalRecords.set(pageResponse.totalElements);
+      } else {
+        this.reports.set([]);
+        this.totalRecords.set(0);
+      }
+      this.isLoading.set(false);
+      this.hasLoadedOnce.set(true);
     });
 
     // Trigger initial load manually since table is hidden
-    this.fetchData(this.firstOffset(), this.pageSize());
+    this.refreshTrigger$.next();
   }
 
   loadReports(event: any) {
@@ -172,50 +223,12 @@ export class ReportsComponent implements OnInit {
       return;
     }
     
-    this.isLoading.set(true);
-    const first = event.first !== undefined ? event.first : 0;
-    const size = event.rows || 10;
-    
-    this.pageSize.set(size);
-    this.firstOffset.set(first);
+    this.pageSize.set(event.rows || 10);
+    this.firstOffset.set(event.first !== undefined ? event.first : 0);
+    if (event.sortField !== undefined) this.sortField.set(event.sortField);
+    if (event.sortOrder !== undefined) this.sortOrder.set(event.sortOrder);
 
-    this.fetchData(first, size, event.sortField, event.sortOrder);
-  }
-
-  private fetchData(first: number, size: number, sortField: string = 'generatedDate', sortOrder: number = -1) {
-    this.isLoading.set(true);
-    const page = size ? first / size : 0;
-    const search = this.searchControl.value || undefined;
-
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { first, rows: size, search: search || null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true
-    });
-
-    const filters: ReportListFilter = { page, size, sortBy: sortField, sortDir: sortOrder === 1 ? 'asc' : 'desc' };
-    if (search) filters.search = search;
-
-    this.reportService.list(filters).subscribe({
-      next: (pageResponse) => {
-        const augmentedReports: ReportSummaryWithReqCode[] = pageResponse.content.map((r: any) => ({
-          ...r,
-          requestCode: r.requestCode || r.requestId
-        }));
-
-        this.reports.set(augmentedReports);
-        this.totalRecords.set(pageResponse.totalElements);
-        this.isLoading.set(false);
-        this.hasLoadedOnce.set(true);
-      },
-      error: () => {
-        this.reports.set([]);
-        this.totalRecords.set(0);
-        this.isLoading.set(false);
-        this.hasLoadedOnce.set(true);
-      }
-    });
+    this.refreshTrigger$.next();
   }
 
   viewPdf(report: ReportSummary) {
