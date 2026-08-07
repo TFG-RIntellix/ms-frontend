@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BehaviorSubject, combineLatest, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, startWith, switchMap, catchError, skip } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, startWith, switchMap, catchError, skip, tap } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -31,7 +31,6 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
     TagModule,
     SelectButtonModule,
     PageHeaderComponent,
-    StatusBadgeComponent,
     SpinnerComponent,
     TooltipModule
   ],
