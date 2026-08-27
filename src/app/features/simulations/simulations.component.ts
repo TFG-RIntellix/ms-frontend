@@ -1,9 +1,9 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { BehaviorSubject, combineLatest, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, startWith, switchMap, catchError, skip, tap } from 'rxjs/operators';
+import { debounceTime } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -17,6 +17,12 @@ import { SimulationSummary } from '../../core/models/simulation.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge/status-badge.component';
 import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
+import { TableStateManager } from '../../shared/classes/table-state.manager';
+
+/**
+ * Smart Component for the Simulations listing view.
+ * Handles pagination, sorting, search, and archiving filters via TableStateManager.
+ */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-simulations',
@@ -71,16 +77,14 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
           [rows]="pageSize()"
           [totalRecords]="totalRecords()"
           [lazy]="true"
-          (onLazyLoad)="loadSimulations($event)"
+          (onLazyLoad)="tableState.onLazyLoad($event)"
           [rowsPerPageOptions]="[10, 25, 50]"
-          [loading]="isLoading()"
+          responsiveLayout="stack"
+          breakpoint="960px"
           [tableStyle]="{'min-width':'50rem'}"
           styleClass="p-datatable-sm"
           [rowHover]="true"
           >
-          <ng-template pTemplate="loadingIcon">
-            <app-spinner [overlay]="false"></app-spinner>
-          </ng-template>
           <ng-template pTemplate="header">
             <tr>
               <th pSortableColumn="scenarioName" class="font-semibold">Nombre 
@@ -134,41 +138,68 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
   `
 })
 export class SimulationsComponent implements OnInit {
-  @ViewChild('dt') table!: Table;
   private simulationService = inject(SimulationService);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  simulations = signal<SimulationSummary[]>([]);
-  totalRecords = signal<number>(0);
-  pageSize = signal<number>(10);
-  firstOffset = signal<number>(0);
-  isLoading = signal(false);
-  hasLoadedOnce = signal(false);
+  private destroyRef = inject(DestroyRef);
+
   searchControl = new FormControl('');
   archivedControl = new FormControl<boolean | null>(false);
-  refreshTrigger$ = new BehaviorSubject<void>(undefined);
   requestIdQueryParam = '';
-  private initialLoadDone = false;
-
-  sortField = signal<string>('simulationDate');
-  sortOrder = signal<number>(-1);
 
   statusOptions = [
     { label: 'Activas', value: false },
     { label: 'Archivadas', value: true },
     { label: 'Todas', value: null }
   ];
+
+  /** 
+   * Orchestrates the PrimeNG table state, syncing pagination/sorting/filtering 
+   * with the URL and triggering the API fetch automatically.
+   */
+  tableState = new TableStateManager<SimulationSummary, SimulationListFilter>({
+    router: this.router,
+    route: this.route,
+    defaultSortField: 'simulationDate',
+    defaultSortOrder: -1,
+    fetchFn: (filters) => this.simulationService.list(filters),
+    buildFilters: (page, size, sortField, sortOrder) => ({
+      search: this.searchControl.value || undefined,
+      archived: this.archivedControl.value !== null ? this.archivedControl.value : undefined,
+      page,
+      size,
+      sortBy: sortField,
+      sortDir: sortOrder === 1 ? 'asc' : 'desc'
+    }),
+    updateUrlParams: (first, size) => ({
+      search: this.searchControl.value || null,
+      archived: this.archivedControl.value !== null ? String(this.archivedControl.value) : null,
+      first: first.toString(),
+      rows: size.toString()
+    })
+  });
+
+  simulations = this.tableState.data;
+  totalRecords = this.tableState.totalRecords;
+  pageSize = this.tableState.pageSize;
+  firstOffset = this.tableState.firstOffset;
+  hasLoadedOnce = this.tableState.hasLoadedOnce;
+
+  constructor() {
+    this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe(() => {
+      this.tableState.resetToFirstPage();
+    });
+    this.archivedControl.valueChanges.subscribe(() => {
+      this.tableState.resetToFirstPage();
+    });
+  }
+
   ngOnInit() {
     this.requestIdQueryParam = this.route.snapshot.queryParamMap.get('requestId') || '';
-
-    const firstStr = this.route.snapshot.queryParamMap.get('first');
-    if (firstStr) this.firstOffset.set(parseInt(firstStr, 10));
-    const rowsStr = this.route.snapshot.queryParamMap.get('rows');
-    if (rowsStr) this.pageSize.set(parseInt(rowsStr, 10));
-
     const search = this.route.snapshot.queryParamMap.get('search') || '';
+    
     if (search || this.requestIdQueryParam) {
       this.searchControl.setValue(search || this.requestIdQueryParam, { emitEvent: false });
     }
@@ -177,89 +208,26 @@ export class SimulationsComponent implements OnInit {
       this.archivedControl.setValue(archivedStr === 'true' ? true : (archivedStr === 'false' ? false : null), { emitEvent: false });
     }
 
-    // 1. Listen for filter changes
-    combineLatest([
-      this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged()),
-      this.archivedControl.valueChanges.pipe(startWith(this.archivedControl.value), distinctUntilChanged())
-    ]).pipe(skip(1)).subscribe(() => {
-      if (this.table) this.table.first = 0;
-      this.firstOffset.set(0);
-      this.refreshTrigger$.next();
-    });
-
-    // 2. Main data fetching pipeline using switchMap
-    this.refreshTrigger$.pipe(
-      skip(1), // Skip the initial undefined value from BehaviorSubject if we manually trigger below, or just don't skip and don't trigger manually
-      tap(() => this.isLoading.set(true)),
-      switchMap(() => {
-        const size = this.pageSize();
-        const first = this.firstOffset();
-        const page = size ? first / size : 0;
-        const searchVal = this.searchControl.value || undefined;
-        const archived = this.archivedControl.value !== null ? this.archivedControl.value : undefined;
-        const currentSortField = this.sortField();
-        const currentSortOrder = this.sortOrder();
-
-        this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: {
-            first,
-            rows: size,
-            search: searchVal || null,
-            archived: archived !== undefined ? String(archived) : null
-          },
-          queryParamsHandling: 'merge',
-          replaceUrl: true
-        });
-
-        const filters: SimulationListFilter = {
-          page,
-          size,
-          sortBy: currentSortField,
-          sortDir: currentSortOrder === 1 ? 'asc' : 'desc',
-          archived
-        };
-        if (searchVal) filters.search = searchVal;
-
-        return this.simulationService.list(filters).pipe(
-          catchError(() => of(null))
-        );
-      })
-    ).subscribe(response => {
-      if (response) {
-        this.simulations.set(response.content);
-        this.totalRecords.set(response.totalElements);
-      } else {
-        this.simulations.set([]);
-        this.totalRecords.set(0);
-      }
-      this.isLoading.set(false);
-      this.hasLoadedOnce.set(true);
-    });
-
-    // Trigger initial load manually since table is hidden
-    this.refreshTrigger$.next();
+    this.tableState.connect().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    this.tableState.triggerLoad();
   }
 
-  loadSimulations(event: any) {
-    if (!this.initialLoadDone) {
-      this.initialLoadDone = true;
-      return;
-    }
-
-    this.firstOffset.set(event.first !== undefined ? event.first : 0);
-    this.pageSize.set(event.rows || 10);
-    if (event.sortField !== undefined) this.sortField.set(event.sortField);
-    if (event.sortOrder !== undefined) this.sortOrder.set(event.sortOrder);
-
-    this.refreshTrigger$.next();
-  }
+  /**
+   * Toggles the archived state of a simulation.
+   * 
+   * @param sim The simulation summary to archive or restore.
+   */
   toggleArchive(sim: SimulationSummary) {
     this.simulationService.archive(sim.simulationId, !sim.isArchived).subscribe({
       next: () => this.reload(),
       error: () => alert('No se pudo actualizar el estado.')
     });
   }
+  /**
+   * Prompts the user for confirmation, then permanently deletes a simulation.
+   * 
+   * @param sim The simulation to delete.
+   */
   deleteSimulation(sim: SimulationSummary) {
     this.confirmationService.confirm({
       message: `¿Estás seguro de que deseas eliminar permanentemente la simulación "${sim.scenarioName}"?`,
@@ -291,6 +259,6 @@ export class SimulationsComponent implements OnInit {
     });
   }
   private reload() {
-    this.refreshTrigger$.next();
+    this.tableState.triggerLoad();
   }
 }

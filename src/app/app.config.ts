@@ -13,6 +13,7 @@ import {
 import { routes } from './app.routes';
 import { RintellixPreset } from './core/theme/rintellix-preset';
 import { keycloakConfig } from './core/auth/keycloak.config';
+import { environment } from './core/config/environment';
 
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { globalErrorInterceptor } from './core/interceptors/global-error.interceptor';
@@ -31,7 +32,7 @@ export const appConfig: ApplicationConfig = {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [
         {
-          urlPattern: /^(http:\/\/localhost:8085)(\/.*)?$/i,
+          urlPattern: new RegExp(`^(${environment.apiBaseUrl})(\\/.*)?$`, 'i'),
           httpMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
         }
       ]

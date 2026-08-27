@@ -63,16 +63,14 @@ export const employmentStatusLabel: Record<string, string> = {
   FUNCIONARIO: 'Funcionario/a',
   AUTONOMO: 'Autónomo/a',
   DESEMPLEADO: 'Desempleado/a',
-  INACTIVO: 'Inactivo/a',
-  OTHER: 'Otro'
+  INACTIVO: 'Inactivo/a'
 };
 
 export const homeOwnershipLabel: Record<string, string> = {
   PROPIA_PAGADA: 'Propia (pagada)',
   PROPIA_HIPOTECA: 'Propia con hipoteca',
   ALQUILER: 'Alquiler',
-  CEDIDA: 'Cedida',
-  OTHER: 'Otro'
+  CEDIDA: 'Cedida'
 };
 
 export const riskGradeColor: Record<string, string> = {

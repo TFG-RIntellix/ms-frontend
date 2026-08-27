@@ -1,9 +1,9 @@
-import { Component, OnInit, inject, signal , ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { combineLatest, Subject, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, startWith, skip, switchMap, tap } from 'rxjs/operators';
+import { debounceTime } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -14,12 +14,16 @@ import { ReportSummary } from '../../core/models/report.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
 import { TooltipModule } from 'primeng/tooltip';
-import { RequestService } from '../../core/services/request.service';
+import { TableStateManager } from '../../shared/classes/table-state.manager';
 
 export interface ReportSummaryWithReqCode extends ReportSummary {
   requestCode?: string;
 }
 
+/**
+ * Smart Component for the PDF Reports listing view.
+ * Handles pagination, sorting, and search via TableStateManager.
+ */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-reports',
@@ -65,16 +69,14 @@ export interface ReportSummaryWithReqCode extends ReportSummary {
           [rows]="pageSize()"
           [totalRecords]="totalRecords()"
           [lazy]="true"
-          (onLazyLoad)="loadReports($event)"
+          (onLazyLoad)="tableState.onLazyLoad($event)"
           [rowsPerPageOptions]="[10, 25, 50]"
-          [loading]="isLoading()"
+          responsiveLayout="stack"
+          breakpoint="960px"
           [tableStyle]="{'min-width':'55rem'}"
           styleClass="p-datatable-sm"
           [rowHover]="true"
         >
-          <ng-template pTemplate="loadingIcon">
-            <app-spinner [overlay]="false"></app-spinner>
-          </ng-template>
           <ng-template pTemplate="header">
             <tr>
               <th pSortableColumn="title" class="font-semibold">Título 
@@ -109,7 +111,7 @@ export interface ReportSummaryWithReqCode extends ReportSummary {
                     icon="pi pi-file-pdf"
                     pTooltip="Ver PDF"
                     tooltipPosition="top"
-                    (onClick)="viewPdf(report)"
+                    (onClick)="viewPdf(report.reportId)"
                   />
                 </div>
               </td>
@@ -122,123 +124,63 @@ export interface ReportSummaryWithReqCode extends ReportSummary {
   `
 })
 export class ReportsComponent implements OnInit {
-  @ViewChild('dt') table!: Table;
   private reportService = inject(ReportService);
-  private requestService = inject(RequestService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
   
-  reports = signal<ReportSummaryWithReqCode[]>([]);
-  totalRecords = signal<number>(0);
-  pageSize = signal<number>(10);
-  firstOffset = signal<number>(0);
-  isLoading = signal(false);
-  hasLoadedOnce = signal(false);
   searchControl = new FormControl('');
-  private initialLoadDone = false;
   
-  sortField = signal<string>('generatedDate');
-  sortOrder = signal<number>(-1);
-  private refreshTrigger$ = new Subject<void>();
+  /** 
+   * Orchestrates the PrimeNG table state, syncing pagination/sorting/filtering 
+   * with the URL and triggering the API fetch automatically.
+   */
+  tableState = new TableStateManager<ReportSummaryWithReqCode, ReportListFilter>({
+    router: this.router,
+    route: this.route,
+    defaultSortField: 'generatedDate',
+    defaultSortOrder: -1,
+    fetchFn: (filters) => this.reportService.list(filters) as any,
+    buildFilters: (page, size, sortField, sortOrder) => ({
+      search: this.searchControl.value || undefined,
+      page,
+      size,
+      sortBy: sortField,
+      sortDir: sortOrder === 1 ? 'asc' : 'desc'
+    }),
+    updateUrlParams: (first, size) => ({
+      search: this.searchControl.value || null,
+      first: first.toString(),
+      rows: size.toString()
+    })
+  });
+
+  reports = this.tableState.data;
+  totalRecords = this.tableState.totalRecords;
+  pageSize = this.tableState.pageSize;
+  firstOffset = this.tableState.firstOffset;
+  hasLoadedOnce = this.tableState.hasLoadedOnce;
+
+  constructor() {
+    this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe(() => {
+      this.tableState.resetToFirstPage();
+    });
+  }
 
   ngOnInit() {
-    const firstStr = this.route.snapshot.queryParamMap.get('first');
-    if (firstStr) this.firstOffset.set(parseInt(firstStr, 10));
-    const rowsStr = this.route.snapshot.queryParamMap.get('rows');
-    if (rowsStr) this.pageSize.set(parseInt(rowsStr, 10));
-    
-    const requestId = this.route.snapshot.queryParamMap.get('requestId') || '';
-    const scoringId = this.route.snapshot.queryParamMap.get('scoringId') || '';
-    const search = this.route.snapshot.queryParamMap.get('search') || '';
+    const searchParam = this.route.snapshot.queryParamMap.get('search');
+    if (searchParam) this.searchControl.setValue(searchParam, { emitEvent: false });
 
-    if (search || requestId || scoringId) {
-      this.searchControl.setValue(search || requestId || scoringId, { emitEvent: false });
-    }
-    
-    // 1. Listen for filter changes
-    combineLatest([
-      this.searchControl.valueChanges.pipe(startWith(this.searchControl.value), debounceTime(300), distinctUntilChanged())
-    ]).pipe(skip(1)).subscribe(() => {
-      // Whenever filters change, reset to page 0
-      if (this.table) {
-        this.table.first = 0;
-      }
-      this.firstOffset.set(0);
-      this.refreshTrigger$.next();
-    });
-
-    // 2. Main data fetching pipeline using switchMap
-    this.refreshTrigger$.pipe(
-      tap(() => this.isLoading.set(true)),
-      switchMap(() => {
-        const size = this.pageSize();
-        const first = this.firstOffset();
-        const page = size ? first / size : 0;
-        const searchVal = this.searchControl.value || undefined;
-        const currentSortField = this.sortField();
-        const currentSortOrder = this.sortOrder();
-
-        this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: { first, rows: size, search: searchVal || null },
-          queryParamsHandling: 'merge',
-          replaceUrl: true
-        });
-
-        const filters: ReportListFilter = { 
-          page, 
-          size, 
-          sortBy: currentSortField, 
-          sortDir: currentSortOrder === 1 ? 'asc' : 'desc' 
-        };
-        if (searchVal) filters.search = searchVal;
-
-        return this.reportService.list(filters).pipe(
-          catchError(() => of(null)) // Catch errors so the pipeline doesn't die
-        );
-      })
-    ).subscribe(pageResponse => {
-      if (pageResponse) {
-        const augmentedReports: ReportSummaryWithReqCode[] = pageResponse.content.map((r: any) => ({
-          ...r,
-          requestCode: r.requestCode || r.requestId
-        }));
-        this.reports.set(augmentedReports);
-        this.totalRecords.set(pageResponse.totalElements);
-      } else {
-        this.reports.set([]);
-        this.totalRecords.set(0);
-      }
-      this.isLoading.set(false);
-      this.hasLoadedOnce.set(true);
-    });
-
-    // Trigger initial load manually since table is hidden
-    this.refreshTrigger$.next();
+    this.tableState.connect().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    this.tableState.triggerLoad();
   }
 
-  loadReports(event: any) {
-    if (!this.initialLoadDone) {
-      this.initialLoadDone = true;
-      return;
-    }
-    
-    this.pageSize.set(event.rows || 10);
-    this.firstOffset.set(event.first !== undefined ? event.first : 0);
-    if (event.sortField !== undefined) this.sortField.set(event.sortField);
-    if (event.sortOrder !== undefined) this.sortOrder.set(event.sortOrder);
-
-    this.refreshTrigger$.next();
-  }
-
-  viewPdf(report: ReportSummary) {
-    this.reportService.getFile(report.reportId).subscribe({
-      next: blob => {
-        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-        const url = URL.createObjectURL(pdfBlob);
-        window.open(url, '_blank');
-      },
-      error: () => alert('No se pudo visualizar el informe.')
-    });
+  /**
+   * Downloads and opens a specific report in a new browser tab.
+   * 
+   * @param reportId The ID of the report to view.
+   */
+  viewPdf(reportId: string) {
+    this.reportService.downloadAndOpenPdf(reportId);
   }
 }

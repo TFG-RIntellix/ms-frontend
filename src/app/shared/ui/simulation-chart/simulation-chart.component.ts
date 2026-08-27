@@ -43,6 +43,10 @@ export interface AmortizationData {
     </div>
   `
 })
+/**
+ * Reusable UI Component that renders a dual-axis chart (Radar or Bar) comparing
+ * Base vs Simulated metrics in a What-If scenario.
+ */
 export class SimulationChartComponent {
   metrics = input<ChartMetricRow[]>([]);
   radarData = computed(() => {

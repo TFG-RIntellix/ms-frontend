@@ -20,6 +20,10 @@ import { AmortizationData } from '../simulation-chart/simulation-chart.component
     }
   `
 })
+/**
+ * Reusable UI Component that renders an area chart showing the debt amortization projection over time.
+ * Compares the base scenario trajectory vs the simulated scenario trajectory.
+ */
 export class AmortizationChartComponent {
   amortization = input<{ base: AmortizationData, sim: AmortizationData | null } | null>(null);
   lineData = computed(() => {

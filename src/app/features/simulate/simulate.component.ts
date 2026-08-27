@@ -27,8 +27,8 @@ import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.com
 import { DeltaChipComponent } from '../../shared/ui/delta-chip/delta-chip.component';
 import { MetricValuePipe } from '../../shared/pipes/metric-value.pipe';
 import { RequestTypeLabelPipe } from '../../shared/pipes/request-type-label.pipe';
-import { employmentStatusOptions } from '../../core/utils/labels';
-import { TagSeverity } from '../../core/utils/tag-severity';
+import { DynamicFormMapper } from '../../core/mappers/dynamic-form.mapper';
+import { SimulationMetricsMapper } from '../../core/mappers/simulation-metrics.mapper';
 import { SimulationChartComponent } from '../../shared/ui/simulation-chart/simulation-chart.component';
 import { AmortizationChartComponent } from '../../shared/ui/amortization-chart/amortization-chart.component';
 import { DynamicFormComponent } from '../../shared/ui/dynamic-form/dynamic-form.component';
@@ -146,6 +146,11 @@ import { SpinnerComponent } from '../../shared/ui/spinner/spinner.component';
     }
   `
 })
+/**
+ * Smart Component responsible for the "What-If" simulation workflow.
+ * Allows users to tweak financial variables of a request, preview the risk impact via a 'draft' API call,
+ * and persist the scenario if desired.
+ */
 export class SimulateComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -165,49 +170,31 @@ export class SimulateComponent implements OnInit {
   // Guardamos el último submit del formulario para poder construir el amortizationConfig y para persistir
   lastFormValues = signal<any>({});
   scenarioNameControl = new FormControl('', Validators.required);
-  fields = computed<DynamicField[]>(() => this.buildFields(this.request()));
-  readonly employmentOptions = employmentStatusOptions;
+  
+  /** Dynamic form fields generated based on the specific request type */
+  fields = computed<DynamicField[]>(() => DynamicFormMapper.buildFields(this.request()));
+  
+  /** 
+   * Computes the rows for the comparison table (Base vs Sim). 
+   * Reactively updates whenever scoring or draft signals change.
+   */
   metricRows = computed(() => {
     const s = this.scoring();
     const d = this.draft();
     if (!s || !d) return [];
-    const sim = d.simulatedResults;
-    const delta = d.delta;
-    return [
-      { label: 'PD (%)', base: (s.pd ?? 0) * 100, sim: (sim.pd ?? 0) * 100, delta: (delta.pdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'LGD (%)', base: (s.lgd ?? 0) * 100, sim: (sim.lgd ?? 0) * 100, delta: (delta.lgdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'EAD', base: s.ead ?? 0, sim: sim.ead ?? 0, delta: delta.eadChange ?? 0, isCurrency: true, invert: true },
-      { label: 'ECL', base: s.ecl ?? 0, sim: sim.ecl ?? 0, delta: delta.eclChange ?? 0, isCurrency: true, invert: true },
-      { label: 'Cuota mensual', base: s.monthlyPayment ?? 0, sim: sim.monthlyPayment ?? 0, delta: delta.monthlyPaymentChange ?? 0, isCurrency: true, invert: true },
-      { label: 'DTI (%)', base: (s.dti ?? 0) * 100, sim: (sim.dti ?? 0) * 100, delta: (delta.dtiChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'Pago total', base: s.totalPayment ?? 0, sim: sim.totalPayment ?? 0, delta: delta.totalPaymentChange ?? 0, isCurrency: true, invert: true },
-      { label: 'Intereses totales', base: s.totalInterest ?? 0, sim: sim.totalInterest ?? 0, delta: delta.totalInterestChange ?? 0, isCurrency: true, invert: true },
-      { label: 'Ingreso disponible', base: s.monthlyDisposableIncome ?? 0, sim: sim.disposableIncome ?? 0, delta: delta.monthlyDisposableIncomeChange ?? 0, isCurrency: true, invert: false }
-    ];
+    return SimulationMetricsMapper.buildMetricRows(s, d);
   });
+
   amortizationConfig = computed(() => {
     const req = this.request();
     const score = this.scoring();
     const draft = this.draft();
     if (!req || !score) return null;
-    const basePrincipal = req.requestedAmount ?? req.requestedCreditLimit ?? score.ead;
-    const baseRate = req.interestRate ?? 0;
-    const baseMonths = req.requestTermMonths ?? 12;
-    const simForm = this.lastFormValues();
-    const simPrincipal = simForm['loanAmount'] ?? simForm['creditLimit'] ?? basePrincipal;
-    const simRate = simForm['interestRate'] ?? baseRate;
-    const simMonths = simForm['termMonths'] ?? baseMonths;
-    const simPayment = draft?.simulatedResults.monthlyPayment ?? 0;
-    return {
-      base: { principal: basePrincipal, rate: baseRate, months: baseMonths, payment: score.monthlyPayment, ecl: score.ecl },
-      sim: draft ? { principal: simPrincipal, rate: simRate, months: simMonths, payment: simPayment, ecl: draft.simulatedResults.ecl } : null
-    };
+    return SimulationMetricsMapper.buildAmortizationConfig(req, score, this.lastFormValues(), draft?.simulatedResults);
   });
-  simRiskSeverity = computed<TagSeverity>(() => {
-    const grade = this.draft()?.simulatedResults.riskGrade ?? '';
-    if (['A', 'B', 'C'].includes(grade)) return 'success';
-    if (['D', 'E'].includes(grade)) return 'warn';
-    return 'danger';
+
+  simRiskSeverity = computed(() => {
+    return SimulationMetricsMapper.getRiskSeverity(this.draft()?.simulatedResults.riskGrade);
   });
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -230,44 +217,19 @@ export class SimulateComponent implements OnInit {
       error: () => this.router.navigate(['/requests', id])
     });
   }
-  private buildFields(req: RequestDetails | undefined): DynamicField[] {
-    if (!req) return [];
-    
-    const requestType = req.requestType ?? 'PRESTAMO';
-    const common: DynamicField[] = [
-      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: ((req as unknown) as Record<string, unknown>)['partyLaboralSituation'] },
-      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['partyIncome'] }
-    ];
-    switch (requestType) {
-      case 'TARJETA_CREDITO':
-        return [
-          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', validators: { min: 0, step: 100 }, value: req.requestedCreditLimit },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
-          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean', value: ((req as unknown) as Record<string, unknown>)['isRevolving'] ?? false },
-          ...common
-        ];
-      case 'HIPOTECA':
-        return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: req.requestedAmount },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: req.requestTermMonths },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
-          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['propertyValue'] },
-          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean', value: false },
-          ...common
-        ];
-      default:
-        return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: req.requestedAmount },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: req.requestTermMonths },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
-          ...common
-        ];
-    }
-  }
+
+  /**
+   * Triggers a 'draft' simulation calculation.
+   * Validates if variables were actually modified to prevent redundant API calls.
+   * 
+   * @param formValues The current values from the dynamic form.
+   */
   recalculate(formValues: any) {
     this.lastFormValues.set(formValues);
     this.errorMessage.set(undefined);
+    
     // Validate that at least one field has changed from its initial value
+    // This optimization avoids unnecessary backend processing if the user clicks "Recalcular" without tweaking anything.
     let hasChanges = false;
     const initialFields = this.fields();
     for (const field of initialFields) {
@@ -303,6 +265,10 @@ export class SimulateComponent implements OnInit {
       error: err => this.errorMessage.set(err?.message ?? 'Error al calcular la simulación.')
     });
   }
+  /**
+   * Persists the current draft simulation as a permanent record.
+   * It infers the final decision (APPROVED, REJECTED) based on the simulated risk grade.
+   */
   persist() {
     const req = this.request();
     const party = this.party();

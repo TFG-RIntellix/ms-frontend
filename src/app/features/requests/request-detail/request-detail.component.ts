@@ -16,6 +16,11 @@ import { DynamicField } from '../../../shared/models/dynamic-form.model';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner.component';
 import { employmentStatusOptions } from '../../../core/utils/labels';
 import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
+import { DynamicFormMapper } from '../../../core/mappers/dynamic-form.mapper';
+/**
+ * Smart Component displaying the comprehensive details of a single request.
+ * Renders dynamic form fields in readonly mode based on the request type.
+ */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-request-detail',
@@ -162,7 +167,7 @@ export class RequestDetailComponent implements OnInit {
   isLoading = signal(true);
   isMarkedAsReviewed = signal(false);
   readonly employmentOptions = employmentStatusOptions;
-  fields = computed<DynamicField[]>(() => this.buildFields(this.request()));
+  fields = computed<DynamicField[]>(() => DynamicFormMapper.buildFields(this.request()));
   pageTitle = computed(() => {
     const req = this.request();
     if (!req) return 'Solicitud';
@@ -183,6 +188,10 @@ export class RequestDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * Updates the request status to 'REVISADO' (Reviewed) via the API.
+   * Useful for the workflow pipeline when an analyst finishes checking the data.
+   */
   markAsReviewed() {
     const req = this.request();
     if (!req) return;
@@ -195,46 +204,10 @@ export class RequestDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * Helper to extract the primary monetary amount from the request details.
+   */
   mainAmount(req: RequestDetails): number {
-    if (req.requestType === 'TARJETA_CREDITO') {
-      return req.requestedCreditLimit ?? 0;
-    }
-    return req.requestedAmount ?? 0;
-  }
-  private buildFields(req: RequestDetails | undefined): DynamicField[] {
-    if (!req) return [];
-    
-    const requestType = req.requestType ?? 'PRESTAMO';
-    const common: DynamicField[] = [
-      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: ((req as unknown) as Record<string, unknown>)['partyLaboralSituation'] },
-      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['partyIncome'] }
-    ];
-    switch (requestType) {
-      case 'TARJETA_CREDITO':
-        return [
-          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', validators: { min: 0, step: 100 }, value: req.requestedCreditLimit },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
-          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean', value: ((req as unknown) as Record<string, unknown>)['isRevolving'] ?? false },
-          ...common
-        ];
-      case 'HIPOTECA':
-        return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: req.requestedAmount },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: req.requestTermMonths },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
-          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: ((req as unknown) as Record<string, unknown>)['propertyValue'] },
-          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean', value: false },
-          ...common
-        ];
-      default:
-        return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: req.requestedAmount },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: req.requestTermMonths },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: req.interestRate },
-          { key: 'loanType', label: 'Tipo de préstamo', type: 'text', value: ((req as unknown) as Record<string, unknown>)['loanType'] ?? '-' },
-          { key: 'repaymentSystem', label: 'Sistema amortización', type: 'text', value: ((req as unknown) as Record<string, unknown>)['repaymentSystem'] ?? '-' },
-          ...common
-        ];
-    }
+    return DynamicFormMapper.getMainAmount(req);
   }
 }
