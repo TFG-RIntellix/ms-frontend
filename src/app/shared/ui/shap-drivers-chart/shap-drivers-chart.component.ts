@@ -91,7 +91,7 @@ export class ShapDriversChartComponent {
   chartData = computed(() => {
     const features = this.sortedFeatures();
     const reversed = [...features].reverse();
-    const labels = reversed.map(f => `${f.featureName} = ${this.formatValue(f.featureValue)}`);
+    const labels = reversed.map(f => f.featureName);
     const values = reversed.map(f => f.shapValue);
     
     // Balanced pastel colors
@@ -201,11 +201,7 @@ export class ShapDriversChartComponent {
         ticks: {
           color: '#334155',
           font: { size: 12, weight: '600' },
-          crossAlign: 'far' as const,
-          callback: function(this: any, value: any) {
-            const label = this.getLabelForValue(value as number);
-            return label.length > 22 ? label.substring(0, 20) + '...' : label;
-          }
+          crossAlign: 'far' as const
         }
       }
     }
