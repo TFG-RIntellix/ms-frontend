@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, computed, inject, signal , ChangeDetectionStrategy} from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -81,8 +81,8 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
         </ng-template>
       </p-card>
       <!-- Main content: Drivers + Sidebar -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-6">
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="xl:col-span-2 space-y-6">
           <!-- SHAP Drivers Chart -->
           <app-shap-drivers-chart
             [features]="s.topFeatures"
@@ -159,6 +159,10 @@ import { DetailFieldComponent } from '../../shared/ui/detail-field/detail-field.
     }
   `
 })
+/**
+ * Smart Component displaying the comprehensive risk scoring results for a specific request.
+ * Includes risk metrics, financial metrics, SHAP driver charts, and report generation polling.
+ */
 export class ScoringComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -198,7 +202,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
       return;
     }
     this.requestId.set(id);
-    
+
     this.scoringService.getByRequest(id).subscribe({
       next: res => {
         this.scoring.set(res);
@@ -208,11 +212,17 @@ export class ScoringComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Polls the backend for the generated PDF report.
+   * Report generation is asynchronous; this method checks every 3 seconds up to a maximum timeout.
+   * 
+   * @param requestId The ID of the request to poll the report for.
+   */
   checkReport(requestId: string) {
     this.isReportLoading.set(true);
     let attempts = 0;
     const maxAttempts = 20; // 60 segundos de timeout (20 * 3s)
-    
+
     // Poll every 3 seconds until the report is generated or timeout is reached
     this.pollingSub = timer(0, 3000).subscribe(() => {
       attempts++;
@@ -222,7 +232,7 @@ export class ScoringComponent implements OnInit, OnDestroy {
         alert('El informe está tardando demasiado en generarse. Por favor, revíselo más tarde.');
         return;
       }
-      
+
       this.reportService.getByRequestId(requestId).subscribe({
         next: report => {
           if (report && report.reportId) {
@@ -232,23 +242,17 @@ export class ScoringComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
-          // Si devuelve 404, significa que aún no se ha generado, simplemente ignora el error
-          // y el polling seguirá hasta el maxAttempts.
         }
       });
     });
   }
 
+  /**
+   * Downloads and opens the generated PDF report in a new tab.
+   */
   viewPdf() {
     const id = this.reportId();
     if (!id) return;
-    this.reportService.getFile(id).subscribe({
-      next: blob => {
-        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-        const url = URL.createObjectURL(pdfBlob);
-        window.open(url, '_blank');
-      },
-      error: () => alert('No se pudo visualizar el informe.')
-    });
+    this.reportService.downloadAndOpenPdf(id);
   }
 }

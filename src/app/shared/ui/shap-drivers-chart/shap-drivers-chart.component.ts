@@ -63,6 +63,10 @@ import { TopFeature } from '../../../core/models/scoring.model';
     </p-card>
   `
 })
+/**
+ * Reusable UI Component that renders a horizontal bar chart displaying SHAP values.
+ * Visualizes the top positive and negative drivers contributing to a machine learning model's prediction.
+ */
 export class ShapDriversChartComponent {
   features = input<TopFeature[]>([]);
   baseValue = input<number>(0);
@@ -127,6 +131,9 @@ export class ShapDriversChartComponent {
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: { left: 5, right: 15 }
+    },
     animation: {
       duration: 800,
       easing: 'easeOutQuart'
@@ -193,8 +200,12 @@ export class ShapDriversChartComponent {
         },
         ticks: {
           color: '#334155',
-          font: { size: 13, weight: '600' },
-          crossAlign: 'far' as const
+          font: { size: 12, weight: '600' },
+          crossAlign: 'far' as const,
+          callback: function(this: any, value: any) {
+            const label = this.getLabelForValue(value as number);
+            return label.length > 22 ? label.substring(0, 20) + '...' : label;
+          }
         }
       }
     }

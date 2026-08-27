@@ -90,6 +90,10 @@ import { Subscription } from 'rxjs';
     </form>
   `
 })
+/**
+ * Reusable UI Component for rendering dynamic forms based on a configuration array.
+ * Handles reactive form creation, validation, and layout grids automatically.
+ */
 export class DynamicFormComponent implements OnDestroy {
   private fb = inject(FormBuilder);
   fields = input<DynamicField[]>([]);

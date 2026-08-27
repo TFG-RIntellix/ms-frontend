@@ -1,3 +1,6 @@
+/**
+ * Represents a saved simulation summary, typically used in list views.
+ */
 export interface SimulationSummary {
   simulationId: string;
   scenarioName: string;
@@ -9,6 +12,9 @@ export interface SimulationSummary {
   simulatedRiskGrade?: string;
 }
 
+/**
+ * Core metrics returned by a simulation calculation.
+ */
 export interface SimulationMetrics {
   pd: number;
   lgd: number;
@@ -35,6 +41,9 @@ export interface SimulationDelta {
   monthlyDisposableIncomeChange: number;
 }
 
+/**
+ * Represents the full details of a saved simulation, including the exact form changes applied.
+ */
 export interface SimulationDetails {
   simulationId: string;
   scenarioName: string;
@@ -61,12 +70,19 @@ export interface DraftRequest {
   formChanges: Record<string, unknown>;
 }
 
+/**
+ * Response from a temporary 'draft' simulation.
+ * Contains both the simulated results and the delta (difference) compared to the base scenario.
+ */
 export interface DraftResponse {
   formChanges: Record<string, unknown>;
   simulatedResults: SimulationMetrics;
   delta: SimulationDelta;
 }
 
+/**
+ * Payload used to persist a new simulation in the database.
+ */
 export interface CreateSimulationPayload {
   scenarioName: string;
   requestId: string;
@@ -77,4 +93,4 @@ export interface CreateSimulationPayload {
   delta: SimulationDelta;
 }
 
-export interface UpdateSimulationPayload extends CreateSimulationPayload {}
+

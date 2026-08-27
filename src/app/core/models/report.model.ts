@@ -4,6 +4,9 @@ export interface RiskFactor {
   description: string;
 }
 
+/**
+ * Summary of a generated PDF report, typically used in list views.
+ */
 export interface ReportSummary {
   reportId: string;
   requestId: string;
@@ -14,6 +17,9 @@ export interface ReportSummary {
   fileSizeBytes: number;
 }
 
+/**
+ * Represents the full metadata details of a generated PDF report.
+ */
 export interface ReportDetails extends ReportSummary {
   reportType: string;
   aiSummary: string;
