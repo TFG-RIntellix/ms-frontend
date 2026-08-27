@@ -1,3 +1,6 @@
+/**
+ * Represents the summary of a credit request, typically used in list views.
+ */
 export interface RequestSummary {
   requestId: string;
   requestCode?: string;
@@ -10,6 +13,9 @@ export interface RequestSummary {
   lastReviewDate?: string;
 }
 
+/**
+ * Represents the detailed view of a credit request, containing all financial and personal data.
+ */
 export interface RequestDetails extends RequestSummary {
   requestDate: string;
   partyNIF?: string;
@@ -19,11 +25,11 @@ export interface RequestDetails extends RequestSummary {
   partyAddress?: string;
   partyLaboralSituation?: string;
   partyIncome?: number;
-  requestedAmount?: number;
+  loanAmount?: number;
   requestTermMonths?: number;
   interestRate?: number;
   purpose?: string;
-  requestedCreditLimit?: number;
+  creditLimit?: number;
   isRevolving?: boolean;
   propertyValue?: number;
   isFirstHome?: boolean;
@@ -31,6 +37,9 @@ export interface RequestDetails extends RequestSummary {
   repaymentSystem?: string;
 }
 
+/**
+ * Represents the details of the party (client) requesting the credit.
+ */
 export interface RequestParty {
   requestId: string;
   partyId: string;

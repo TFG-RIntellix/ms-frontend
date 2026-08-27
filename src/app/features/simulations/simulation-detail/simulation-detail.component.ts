@@ -17,8 +17,8 @@ import { DeltaChipComponent } from '../../../shared/ui/delta-chip/delta-chip.com
 import { StatusBadgeComponent } from '../../../shared/ui/status-badge/status-badge.component';
 import { MetricValuePipe } from '../../../shared/pipes/metric-value.pipe';
 import { RequestTypeLabelPipe } from '../../../shared/pipes/request-type-label.pipe';
-import { employmentStatusOptions } from '../../../core/utils/labels';
-import { TagSeverity } from '../../../core/utils/tag-severity';
+import { DynamicFormMapper } from '../../../core/mappers/dynamic-form.mapper';
+import { SimulationMetricsMapper } from '../../../core/mappers/simulation-metrics.mapper';
 import { SimulationChartComponent } from '../../../shared/ui/simulation-chart/simulation-chart.component';
 import { AmortizationChartComponent } from '../../../shared/ui/amortization-chart/amortization-chart.component';
 import { DetailFieldComponent } from '../../../shared/ui/detail-field/detail-field.component';
@@ -197,90 +197,25 @@ export class SimulationDetailComponent implements OnInit {
   party = signal<RequestParty | undefined>(undefined);
   scoring = signal<Scoring | undefined>(undefined);
   isLoading = signal(true);
-  fields = computed<DynamicField[]>(() => this.buildFields(this.simulation()?.formChanges));
-  readonly employmentOptions = employmentStatusOptions;
+  fields = computed<DynamicField[]>(() => DynamicFormMapper.buildFields(this.request(), this.simulation()?.formChanges));
+  
   metricRows = computed(() => {
     const sim = this.simulation();
     const s = this.scoring();
     if (!sim || !s) return [];
-    const simResults = sim.simulatedResults;
-    const delta = sim.delta;
-    return [
-      { label: 'PD (%)', base: s.pd * 100, sim: (sim.simulatedPd ?? 0) * 100, delta: (delta?.pdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'LGD (%)', base: s.lgd * 100, sim: (sim.simulatedLgd ?? 0) * 100, delta: (delta?.lgdChange ?? 0) * 100, isCurrency: false, invert: true, format: '1.2-2' },
-      { label: 'EAD', base: s.ead, sim: sim.simulatedEad ?? 0, delta: delta?.eadChange ?? 0, isCurrency: true, invert: true },
-      { label: 'ECL', base: s.ecl, sim: sim.simulatedEcl ?? 0, delta: delta?.eclChange ?? 0, isCurrency: true, invert: true },
-      {
-        label: 'Cuota mensual',
-        base: s.monthlyPayment,
-        sim: simResults?.monthlyPayment ?? 0,
-        delta: delta?.monthlyPaymentChange ?? 0,
-        isCurrency: true,
-        invert: true,
-        hidden: !simResults
-      },
-      {
-        label: 'DTI (%)',
-        base: s.dti * 100,
-        sim: (simResults?.dti ?? 0) * 100,
-        delta: (delta?.dtiChange ?? 0) * 100,
-        isCurrency: false,
-        invert: true,
-        format: '1.2-2',
-        hidden: !simResults
-      },
-      {
-        label: 'Pago total',
-        base: s.totalPayment,
-        sim: simResults?.totalPayment ?? 0,
-        delta: delta?.totalPaymentChange ?? 0,
-        isCurrency: true,
-        invert: true,
-        hidden: !simResults
-      },
-      {
-        label: 'Intereses totales',
-        base: s.totalInterest,
-        sim: simResults?.totalInterest ?? 0,
-        delta: delta?.totalInterestChange ?? 0,
-        isCurrency: true,
-        invert: true,
-        hidden: !simResults
-      },
-      {
-        label: 'Ingreso disponible',
-        base: s.monthlyDisposableIncome,
-        sim: simResults?.disposableIncome ?? 0,
-        delta: delta?.monthlyDisposableIncomeChange ?? 0,
-        isCurrency: true,
-        invert: false,
-        hidden: !simResults
-      }
-    ];
+    return SimulationMetricsMapper.buildMetricRows(s, sim);
   });
+
   amortizationConfig = computed(() => {
     const req = this.request();
     const score = this.scoring();
     const sim = this.simulation();
     if (!req || !score || !sim) return null;
-    const basePrincipal = req.requestedAmount ?? req.requestedCreditLimit ?? score.ead;
-    const baseRate = req.interestRate ?? 0;
-    const baseMonths = req.requestTermMonths ?? 12;
-    const simForm = sim.formChanges;
-    const simPrincipal = (simForm['loanAmount'] as number) ?? (simForm['creditLimit'] as number) ?? basePrincipal;
-    const simRate = (simForm['interestRate'] as number) ?? baseRate;
-    const simMonths = (simForm['termMonths'] as number) ?? baseMonths;
-    const simPayment = sim.simulatedResults?.monthlyPayment ?? 0;
-    return {
-      base: { principal: basePrincipal, rate: baseRate, months: baseMonths, payment: score.monthlyPayment, ecl: score.ecl },
-      sim: sim.simulatedResults ? { principal: simPrincipal, rate: simRate, months: simMonths, payment: simPayment, ecl: sim.simulatedResults.ecl } : null
-    };
+    return SimulationMetricsMapper.buildAmortizationConfig(req, score, sim.formChanges, sim.simulatedResults);
   });
-  simRiskSeverity = computed<TagSeverity>(() => {
-    const grade = this.simulation()?.simulatedRiskGrade ?? '';
-    if (['A', 'B', 'C'].includes(grade)) return 'success';
-    if (['D', 'E'].includes(grade)) return 'warn';
-    return 'danger';
+
+  simRiskSeverity = computed(() => {
+    return SimulationMetricsMapper.getRiskSeverity(this.simulation()?.simulatedRiskGrade);
   });
   constructor() {
   }
@@ -314,43 +249,5 @@ export class SimulationDetailComponent implements OnInit {
       error: () => this.router.navigate(['/simulations'])
     });
   }
-  private buildFields(formChanges: Record<string, unknown> | undefined): DynamicField[] {
-    const req = this.request();
-    if (!req) return [];
-    
-    const requestType = req.requestType ?? 'PRESTAMO';
-    const getValue = (key: string, sourceKey?: string) => {
-      const reqVal = ((req as unknown) as Record<string, unknown>)[sourceKey ?? key];
-      return formChanges ? (formChanges[key] ?? formChanges[sourceKey ?? key] ?? reqVal) : reqVal;
-    };
-    const common: DynamicField[] = [
-      { key: 'employmentStatus', sourceKey: 'partyLaboralSituation', label: 'Situación laboral', type: 'select', options: this.employmentOptions, value: getValue('employmentStatus', 'partyLaboralSituation') },
-      { key: 'annualIncome', sourceKey: 'partyIncome', label: 'Ingresos anuales', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('annualIncome', 'partyIncome') }
-    ];
-    switch (requestType) {
-      case 'TARJETA_CREDITO':
-        return [
-          { key: 'creditLimit', sourceKey: 'requestedCreditLimit', label: 'Límite de crédito', type: 'number', prefix: '€ ', validators: { min: 0, step: 100 }, value: getValue('creditLimit', 'requestedCreditLimit') },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: getValue('interestRate') },
-          { key: 'isRevolving', sourceKey: 'isRevolving', label: 'Revolving', type: 'boolean', value: getValue('isRevolving') ?? false },
-          ...common
-        ];
-      case 'HIPOTECA':
-        return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('loanAmount', 'requestedAmount') },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: getValue('termMonths', 'requestTermMonths') },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: getValue('interestRate') },
-          { key: 'propertyValue', sourceKey: 'propertyValue', label: 'Valor de la propiedad', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('propertyValue') },
-          { key: 'hasMortgage', label: 'Tiene otra hipoteca', type: 'boolean', value: getValue('hasMortgage') ?? false },
-          ...common
-        ];
-      default:
-        return [
-          { key: 'loanAmount', sourceKey: 'requestedAmount', label: 'Importe solicitado', type: 'number', prefix: '€ ', validators: { min: 0, step: 1000 }, value: getValue('loanAmount', 'requestedAmount') },
-          { key: 'termMonths', sourceKey: 'requestTermMonths', label: 'Plazo (meses)', type: 'number', suffix: ' meses', validators: { min: 1, step: 12 }, value: getValue('termMonths', 'requestTermMonths') },
-          { key: 'interestRate', sourceKey: 'interestRate', label: 'Tipo de interés', type: 'number', suffix: ' %', validators: { min: 0, max: 100, step: 0.01 }, value: getValue('interestRate') },
-          ...common
-        ];
-    }
-  }
+
 }

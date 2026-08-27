@@ -1,6 +1,10 @@
 import { Component, inject , ChangeDetectionStrategy} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import Keycloak from 'keycloak-js';
+/**
+ * Presentational Component for the application's side navigation menu.
+ * Contains links to the main feature modules and the logout action.
+ */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sidebar',
@@ -82,6 +86,9 @@ import Keycloak from 'keycloak-js';
 })
 export class SidebarComponent {
   private keycloak = inject(Keycloak);
+  /**
+   * Redirects the user to the Keycloak logout flow and clears the local session.
+   */
   logout() {
     this.keycloak.logout({ redirectUri: window.location.origin + '/login' });
   }

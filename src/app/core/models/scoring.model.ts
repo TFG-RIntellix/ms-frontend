@@ -1,3 +1,6 @@
+/**
+ * Represents a feature/variable that strongly influenced the AI model's decision (SHAP value).
+ */
 export interface TopFeature {
   featureName: string;
   featureValue: string;
@@ -5,6 +8,10 @@ export interface TopFeature {
   description?: string;
 }
 
+/**
+ * Represents the complete risk scoring results for a specific request.
+ * Contains core risk metrics (PD, LGD, EAD, ECL), financial metrics, and SHAP drivers.
+ */
 export interface Scoring {
   scoringId: string;
   requestId: string;

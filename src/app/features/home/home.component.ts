@@ -1,4 +1,4 @@
-import { Component , ChangeDetectionStrategy} from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -61,7 +61,7 @@ export class HomeComponent {
       iconBgClass: 'bg-primary-100',
       iconTextClass: 'text-primary-600',
       buttonLabel: 'Ver solicitudes',
-      buttonSeverity: undefined, // Color primario por defecto
+      buttonSeverity: undefined,
       route: '/requests'
     },
     {

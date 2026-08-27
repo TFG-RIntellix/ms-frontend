@@ -2,6 +2,10 @@ import { Component, inject , ChangeDetectionStrategy} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { BreadcrumbService } from '../../core/services/breadcrumb.service';
+/**
+ * Dumb Component for displaying navigation breadcrumbs.
+ * Subscribes to the BreadcrumbService to render the current route path dynamically.
+ */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-breadcrumb',
