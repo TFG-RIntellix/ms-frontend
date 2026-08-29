@@ -83,7 +83,20 @@ export class ReportService {
       next: blob => {
         const pdfBlob = new Blob([blob], { type: 'application/pdf' });
         const url = URL.createObjectURL(pdfBlob);
-        window.open(url, '_blank');
+        const win = window.open('', '_blank');
+        if (win) {
+          win.document.write(`
+            <html>
+              <head><title>Report_${reportId}.pdf</title></head>
+              <body style="margin:0;padding:0;">
+                <iframe src="${url}" width="100%" height="100%" style="border:none;"></iframe>
+              </body>
+            </html>
+          `);
+          win.document.close();
+        } else {
+          window.open(url, '_blank');
+        }
       },
       error: () => alert('No se pudo visualizar el informe.')
     });
