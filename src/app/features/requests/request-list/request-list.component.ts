@@ -83,7 +83,6 @@ import { TableStateManager } from '../../../shared/classes/table-state.manager';
             [totalRecords]="totalRecords()"
             [lazy]="true"
             (onLazyLoad)="tableState.onLazyLoad($event)"
-            [rowsPerPageOptions]="[10, 25, 50]"
             responsiveLayout="stack"
             breakpoint="960px"
             [tableStyle]="{'min-width':'60rem'}"
@@ -121,6 +120,25 @@ import { TableStateManager } from '../../../shared/classes/table-state.manager';
                 <td><i class="pi pi-chevron-right text-surface-400 group-hover:text-primary-600 transition-colors"></i></td>
               </tr>
             </ng-template>
+            <ng-template pTemplate="paginatorright">
+              <div class="flex items-center gap-1.5 ml-4">
+                <span class="text-sm text-surface-500 mr-1">Filas:</span>
+                @for (size of pageSizeOptions; track size) {
+                  <button
+                    type="button"
+                    class="px-2.5 py-1 text-sm rounded-md border transition-colors"
+                    [class.bg-primary-500]="pageSize() === size"
+                    [class.text-white]="pageSize() === size"
+                    [class.border-primary-500]="pageSize() === size"
+                    [class.text-surface-600]="pageSize() !== size"
+                    [class.border-surface-300]="pageSize() !== size"
+                    [class.hover:bg-surface-100]="pageSize() !== size"
+                    (click)="tableState.changePageSize(size); $event.stopPropagation()">
+                    {{ size }}
+                  </button>
+                }
+              </div>
+            </ng-template>
           </p-table>
         }
       </ng-template>
@@ -136,6 +154,7 @@ export class RequestListComponent implements OnInit {
   searchControl = new FormControl('');
   statusControl = new FormControl('');
   statusOptions = [{ value: '', label: 'Todos los estados' }, ...Object.entries(statusLabel).map(([value, label]) => ({ value, label }))];
+  pageSizeOptions = [10, 25, 50];
 
   /** 
    * Orchestrates the PrimeNG table state, syncing pagination/sorting/filtering 
