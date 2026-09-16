@@ -125,4 +125,14 @@ export class TableStateManager<T, F> {
 
     this.triggerLoad();
   }
+
+  /**
+   * Changes the number of rows per page and resets to the first page.
+   * @param size The new page size.
+   */
+  changePageSize(size: number) {
+    this.pageSize.set(size);
+    this.firstOffset.set(0);
+    this.triggerLoad();
+  }
 }

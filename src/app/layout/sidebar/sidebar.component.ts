@@ -10,7 +10,7 @@ import Keycloak from 'keycloak-js';
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <aside class="h-screen w-64 bg-surface-900 text-white flex flex-col shadow-lg">
+    <aside class="h-full w-64 bg-surface-900 text-white flex flex-col shadow-lg">
       <div class="py-6 px-2 flex items-center justify-center border-b border-surface-800">
         <img src="assets/logo-completo-blanco.svg" alt="RIntellix" class="w-full h-auto">
       </div>

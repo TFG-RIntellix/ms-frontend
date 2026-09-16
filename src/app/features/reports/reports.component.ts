@@ -70,7 +70,6 @@ export interface ReportSummaryWithReqCode extends ReportSummary {
           [totalRecords]="totalRecords()"
           [lazy]="true"
           (onLazyLoad)="tableState.onLazyLoad($event)"
-          [rowsPerPageOptions]="[10, 25, 50]"
           responsiveLayout="stack"
           breakpoint="960px"
           [tableStyle]="{'min-width':'55rem'}"
@@ -117,6 +116,25 @@ export interface ReportSummaryWithReqCode extends ReportSummary {
               </td>
             </tr>
           </ng-template>
+          <ng-template pTemplate="paginatorright">
+            <div class="flex items-center gap-1.5 ml-4">
+              <span class="text-sm text-surface-500 mr-1">Filas:</span>
+              @for (size of pageSizeOptions; track size) {
+                <button
+                  type="button"
+                  class="px-2.5 py-1 text-sm rounded-md border transition-colors"
+                  [class.bg-primary-500]="pageSize() === size"
+                  [class.text-white]="pageSize() === size"
+                  [class.border-primary-500]="pageSize() === size"
+                  [class.text-surface-600]="pageSize() !== size"
+                  [class.border-surface-300]="pageSize() !== size"
+                  [class.hover:bg-surface-100]="pageSize() !== size"
+                  (click)="tableState.changePageSize(size); $event.stopPropagation()">
+                  {{ size }}
+                </button>
+              }
+            </div>
+          </ng-template>
         </p-table>
         }
       </ng-template>
@@ -130,7 +148,8 @@ export class ReportsComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   
   searchControl = new FormControl('');
-  
+  pageSizeOptions = [10, 25, 50];
+
   /** 
    * Orchestrates the PrimeNG table state, syncing pagination/sorting/filtering 
    * with the URL and triggering the API fetch automatically.

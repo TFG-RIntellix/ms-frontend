@@ -24,6 +24,12 @@ body {
   margin: 0;
 }
 
+app-root,
+app-main-layout {
+  display: block;
+  min-height: 100%;
+}
+
 body {
   background-color: var(--color-rintellix-background);
   color: #0F172A;
